@@ -1,10 +1,10 @@
 ---
 name: qiuzhao
-version: 1.1.4
+version: 1.1.5
 description: "校招投递管理：录入JD、评估岗位契合度、跟踪投递进度、记录Offer、录入简历、面试复盘。数据存飞书多维表格。触发：/qiuzhao 或用户提及秋招/校招/投递/岗位评估/Offer/面试复盘。"
 ---
 
-# 秋招助理（qiuzhao） v1.1.4
+# 秋招助理（qiuzhao） v1.1.5
 
 通用的校招投递管理助手。数据全部存在用户自己的飞书多维表格；本地只有指针配置（`~/.config/qiuzhao/config.json`）和脚本。
 
