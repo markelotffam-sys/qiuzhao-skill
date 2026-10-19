@@ -22,11 +22,12 @@
 ## 表 1「投递记录」（base 的第一张表）
 
 ```bash
-lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shanghai" \
+lark-cli base +base-create --name "秋招投递管理" --time-zone "<用户本地时区>" \
   --table-name "投递记录" --fields '[
   {"name":"公司","type":"text"},
   {"name":"岗位","type":"text"},
   {"name":"投递日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
+  {"name":"最近更新","type":"datetime","style":{"format":"yyyy/MM/dd"}},
   {"name":"进度查询链接","type":"text","style":{"type":"url"}},
   {"name":"状态","type":"select","multiple":false,"options":[{"name":"待投递"},{"name":"已投递"},{"name":"筛选中"},{"name":"笔试"},{"name":"一面"},{"name":"二面"},{"name":"HR面"},{"name":"Offer"},{"name":"已挂"},{"name":"放弃"}]},
   {"name":"评分","type":"number","style":{"type":"plain","precision":1}},
@@ -35,6 +36,7 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
   {"name":"JD核心拆解","type":"text"},
   {"name":"JD原文","type":"text"},
   {"name":"备注","type":"text"},
+  {"name":"DDL日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
   {"name":"DDL事项","type":"text"}
 ]' --as user
 ```
@@ -106,7 +108,7 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 ]
 ```
 
-> link 建字段时若 `bidirectional:true` 会在投递记录反向生成一个关联字段——本 skill 用默认 `false` 即可。校验字段数时若发现投递记录多了个反向 link 字段，属正常现象，不是重复建字段。
+> link 字段默认 `bidirectional:false`（单向），**不会**在投递记录生成反向字段；若发现投递记录出现反向 link 字段，说明创建时用了 `bidirectional:true`，按需保留或删除，不是重复建字段。
 
 ## 写入规范（CellValue 形态，写记录前必读）
 
@@ -117,32 +119,34 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 | select（单选） | `["已投递"]`——**也是数组**，单选数组里只能有一个选项 |
 | select（多选） | `["标签A","标签B"]` |
 | datetime | `"2026-03-24 10:00"` 字符串 |
-| link | `[{"id":"rec_xxx"}]`；写入前先用 `+record-search` 拿到目标 record_id |
+| link | `[{"id":"rec_xxx"}]`；写入前先用 `+record-list --filter-json` 定位到目标 record_id |
 
-示例（录入一条投递记录的完整字段）：
+示例（录入一条投递记录的完整字段；示例数字与 40/40/20 与 45/35/20 权重自洽）：
 
 ```bash
 lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --as user --json '{
   "公司":"示例公司",
   "岗位":"产品经理",
   "投递日期":"2026-03-24 10:00",
+  "最近更新":"2026-03-24 10:00",
   "状态":["已投递"],
-  "评分":7.5,
-  "评分拆解":"匹配8（硬性8/经验8/技能6）/策略7（方向9/平台6/城市5）",
+  "评分":7.6,
+  "评分拆解":"匹配7.6（硬性8/经验8/技能6）/策略8.1（方向10/平台7/城市5.6）",
   "优先级":["P1"],
+  "DDL日期":"2026-04-02 19:30",
   "DDL事项":"4.2 19:30 一面"
 }'
 ```
 
-**更新已有记录 ≠ 新建**：`+record-upsert` 不会按业务键自动更新——不带 `--record-id` 就是新建一条。更新必须先搜索拿 `record_id` 再更新：
+**更新已有记录 ≠ 新建**：`+record-upsert` 不会按业务键自动更新——不带 `--record-id` 就是新建一条。更新必须先**双条件定位**（公司+岗位，避免同公司多岗更新错行）再更新：
 
 ```bash
-# 搜索（--format json 便于解析；record_id 在 data.record_id_list）
-lark-cli base +record-search --base-token <token> --table-id 投递记录 --as user --format json \
-  --json '{"keyword":"示例公司","search_fields":["公司"]}'
-# 更新
+# 定位（--filter-json 双条件：== 精确 / intersects 模糊；record_id 在 data.record_id_list）
+lark-cli base +record-list --base-token <token> --table-id 投递记录 --as user --format json \
+  --filter-json '{"logic":"and","conditions":[["公司","==","示例公司"],["岗位","==","产品经理"]]}'
+# 命中多条时列出候选让用户选，不要自行挑第一条；更新时同步写「最近更新」
 lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --record-id <id> --as user \
-  --json '{"状态":["笔试"]}'
+  --json '{"状态":["笔试"],"最近更新":"2026-03-28 14:00"}'
 ```
 
 **含换行/引号的长 JSON**（如 JD核心拆解多行文本）：先写入临时文件再传，避免 shell 转义出错：

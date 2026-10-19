@@ -68,16 +68,18 @@ lark-cli base +dashboard-arrange --base-token <token> --dashboard-id <did> --as 
 }
 ```
 
-### 6. DDL 提醒（column 柱状图 + 过滤非空）
+### 6. DDL 提醒（column 柱状图，按 DDL日期 取数 + 过滤非空）
 
 ```json
 {
   "table_name": "投递记录",
   "count_all": true,
-  "group_by": [{ "field_name": "DDL事项", "mode": "integrated", "sort": {"type":"value","order":"desc"} }],
-  "filter": { "conjunction": "and", "conditions": [{ "field_name": "DDL事项", "operator": "isNotEmpty" }] }
+  "group_by": [{ "field_name": "DDL日期", "mode": "integrated", "sort": {"type":"group","order":"asc"} }],
+  "filter": { "conjunction": "and", "conditions": [{ "field_name": "DDL日期", "operator": "isNotEmpty" }] }
 }
 ```
+
+> 以「DDL日期」（datetime）为机器判定字段——自由文本「DDL事项」不可靠且无法稳定过滤。柱状图展示"哪天有几个 DDL"；文案看「DDL事项」字段。
 
 ### 7. 面试评分走势（area 面积图，数据源=面试记录）
 
@@ -93,6 +95,6 @@ lark-cli base +dashboard-arrange --base-token <token> --dashboard-id <did> --as 
 
 - 图表类型必带 `table_name`；`series` 与 `count_all` 二选一，至少一个
 - `group_by` 最多 2 个；写了 `sort` 就必须带 `order`（`value` 排序不会自动补方向）
-- `filter` 的日期条件只能 `is/isGreater/isLess`，value 用 `["ExactDate", 毫秒时间戳]`；文本的 `isNotEmpty` 不传 value（如模板 6）
+- `filter` 的日期条件只能 `is/isGreater/isLess`，value 用 `["ExactDate", 毫秒时间戳]`；`isNotEmpty` 不传 value（模板 6 即按 DDL日期 过滤非空）
 - 同一 dashboard 的组件**必须串行创建**，并记录每个 `block_id`
 - 已知坑：`text` 类型组件经 CLI 更新时文本会被包一层 JSON 引号（1.0.96 实测），且 `--data-config` 会吞换行——本看板不使用 text 组件，DDL 展示用模板 6 的数据驱动柱状图替代

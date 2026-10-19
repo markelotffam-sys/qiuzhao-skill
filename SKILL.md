@@ -1,15 +1,15 @@
 ---
 name: qiuzhao
-version: 1.0.0
+version: 1.0.1
 description: "校招投递管理：录入JD、评估岗位契合度、跟踪投递进度、记录Offer、录入简历、面试复盘。数据存飞书多维表格。触发：/qiuzhao 或用户提及秋招/校招/投递/岗位评估/Offer/面试复盘。"
 ---
 
-# 秋招助理（qiuzhao） v1.0.0
+# 秋招助理（qiuzhao） v1.0.1
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 数据全部存储在用户自己的飞书多维表格中，本地只保留指针配置文件（`~/.config/qiuzhao/config.json`），不含业务数据。
 
-依赖：lark-cli ≥ 1.0.96（本文档中所有 CLI 行为均实测于该版本）。
+依赖：lark-cli ≥ 1.0.96（本文档中所有 CLI 行为均实测于 1.0.96；更新版本理论兼容、未复测）。
 
 ## 触发方式
 
@@ -29,13 +29,16 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 ## 总览输出模板
 
-`/qiuzhao` 总览必须按以下固定结构输出（数据来自「投递记录」，涉及面试的提示来自「面试记录」）：
+`/qiuzhao` 总览必须按以下固定结构输出（数据来自「投递记录」「面试记录」）：
 
 1. **各状态计数**：一行列出每个状态的记录数（如 `已投递 12 · 笔试 3 · 一面 2 · 已挂 5 …`）
-2. **P0 待办列表**：全部 P0 记录，按评分降序排；每条含 公司/岗位/状态/评分
-3. **未来 7 天 DDL**：「DDL事项」非空且日期在 7 天内的记录，按日期升序；过期未清空的标注「已过期」
-4. **停滞提醒**：状态非终态（非 Offer/已挂/放弃）且「投递日期」距今 >14 天的记录，列公司+岗位+当前状态
-5. **看板提示**：提示可在飞书打开「投递进度看板」查看图表
+2. **P0 待办列表**：P0 且状态非终态（排除 Offer/已挂/放弃）的记录，按评分降序；每条含 公司/岗位/状态/评分
+3. **DDL 两段**（以「DDL日期」字段判定，「DDL事项」只作展示文案）：
+   - 未来 7 天：DDL日期在 [今天, 今天+7] 内，按日期升序
+   - 已过期：DDL日期早于今天且两字段均未清空，提示用户清理
+4. **停滞提醒**：状态非终态且「最近更新」距今 >14 天（该字段为空则退化用「投递日期」判定），列公司+岗位+当前状态
+5. **最近面试复盘**：最近 1 条面试记录的 面试评分 + 改进清单前 3 项（无则省略本段）
+6. **看板提示**：提示可在飞书打开「投递进度看板」查看图表
 
 ## 首次使用：初始化流程
 
@@ -43,7 +46,7 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 1. 确认 lark-cli 已安装且认证通过：`lark-cli auth status`
    - 未安装 → 引导按 README 安装（`npm install -g @larksuite/cli`）
-   - 未认证 → 引导 `lark-cli auth login --domain base,docs,drive`（url-resolve / title-resolve 依赖 docs/drive 域的搜索能力，scope 不足会报错；不确定范围时可直接 `--domain all`），完成后重查 status 再继续
+   - 未认证 → 引导 `lark-cli auth login --domain base,docs,drive`（base 域含 wiki 链接解析；url-resolve / title-resolve 的文档搜索 scope 不在 base 域内，故推荐连同 docs,drive 一起授权——若用户只授权 base，贴链接解析可能受限，届时引导补授权），完成后重查 status 再继续
 2. 读本地配置 `~/.config/qiuzhao/config.json`：
    - 存在且有效 → 跳到「运行流程」
    - 不存在 / token 无效 → 开始初始化
@@ -52,16 +55,19 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 ### Step 1 — 确定 base（全自动优先）
 
-先尝试自动创建（base + 第一张表「投递记录」一次完成，`--fields` JSON 抄 [references/table-schema.md](references/table-schema.md)，不要自创字段属性）：
+先尝试自动创建（base + 第一张表「投递记录」一次完成）：把 [references/table-schema.md](references/table-schema.md) 表 1 的 **JSON 数组原样**代入 `--fields`（不要自创字段属性，也不要留占位文字）：
 
 ```bash
-lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shanghai" \
-  --table-name "投递记录" --fields '<投递记录 schema，见 references/table-schema.md>' --as user
+lark-cli base +base-create --name "秋招投递管理" --time-zone "<按用户本地时区询问或推断，如 Asia/Shanghai>" \
+  --table-name "投递记录" --fields '<references/table-schema.md 表1 的完整 JSON 数组>' --as user
 ```
+
+> `--table-name --fields` 会自动删除平台默认表并建自定义首表；返回里可核对 `default_table_deleted: true`。
 
 若自动创建失败（权限等），降级：
 - 引导用户在飞书手动建一个空多维表格，把链接发给 AI
-- `lark-cli base +url-resolve --url "<链接>" --as user` 解析 base_token，再用 `+table-create` 补建「投递记录」
+- `lark-cli base +url-resolve --url "<链接>" --as user` 解析 base_token
+- **处理默认表**：手动建的 base 自带一张默认表——优先**复用**：`+table-update` 改名「投递记录」→ `+field-update` 把主字段改名「公司」→ `+field-create` 补齐其余字段；或经用户确认后 `+table-delete --yes` 删除再 `+table-create`
 
 **避免重复建库**：若用户提到"之前建过/初始化过一半"，或检测到已有 base/半成品表，优先让用户提供表格链接接入，`+table-list` 对比目标结构缺啥补啥，**不要再自动创建新 base**。
 
@@ -82,7 +88,7 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 
 ### Step 4 — 生成档位并写入评分规则（13 行）
 
-把 Step 3 的偏好**转成具体档位文本**（方向：最喜欢的=10 逐级递减；城市：优先=10、可接受=中档、其余=低档），写入「评分规则」表 13 行——**「方向一致性」「城市」两行的档位必须是上面生成的具体档位，不允许留"由初始化收集生成"之类的占位文案**：
+把 Step 3 的偏好**转成具体档位文本**（方向：最喜欢的=10 逐级递减；城市：优先=10、可接受=中档、其余=低档），写入「评分规则」表 13 行——**「方向一致性」「城市」两行的档位必须是上面生成的具体档位，不允许留"由初始化收集生成"之类的占位文案**。写入可用 `+record-batch-create --json '{"create_records":[...]}'` 一次批量建 13 条：
 
 | 模块 | 维度 | 权重 | 档位规则 |
 |---|---|---|---|
@@ -126,8 +132,8 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 
 全部步骤完成后逐项自检，失败项**只补缺失，不重建已有资源**（幂等）：
 
-- `+table-list`：恰好 6 张目标表
-- 每张 `+field-list`：字段名/类型/单选选项与 references/table-schema.md 一致；投递记录无多余字段
+- `+table-list`：**包含** 6 张目标表（复用/降级场景可能有多余表——如遗留默认表，只提示用户，不阻塞；多余字段同理）
+- 每张 `+field-list`：字段名/类型/单选选项与 references/table-schema.md 一致
 - 「评分规则」`+record-list`：13 行，且「方向一致性」「城市」两行为具体档位（无占位文案）
 - `+dashboard-block-list`：7 个组件
 - 面试记录的「关联投递」link 字段存在且指向投递记录
@@ -146,13 +152,14 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 
 ### 表 1「投递记录」
 
-字段顺序：公司 → 岗位 → 投递日期 → 进度查询链接 → 状态 → 评分 → 评分拆解 → 优先级 → JD核心拆解 → JD原文 → 备注 → DDL事项
+字段顺序：公司 → 岗位 → 投递日期 → 最近更新 → 进度查询链接 → 状态 → 评分 → 评分拆解 → 优先级 → JD核心拆解 → JD原文 → 备注 → DDL日期 → DDL事项
 
 | 字段 | 机器类型 | 说明 |
 |---|---|---|
 | 公司 | text | 主字段 |
 | 岗位 | text | |
 | 投递日期 | datetime `yyyy/MM/dd` | 写入用 `"2026-03-24 10:00"` 格式 |
+| 最近更新 | datetime `yyyy/MM/dd` | **每次改记录同步写当前时间**；停滞提醒按此字段判定 |
 | 进度查询链接 | text + style.url | **不是** `type:"url"` |
 | 状态 | select 单选 | 待投递/已投递/筛选中/笔试/一面/二面/HR面/Offer/已挂/放弃 |
 | 评分 | number | 匹配分 |
@@ -161,7 +168,8 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 | JD核心拆解 | text | 结构化拆解（格式见下） |
 | JD原文 | text | |
 | 备注 | text | 内推人等真实信息 |
-| DDL事项 | text | 近期截止短文本（如 `4.2 19:30 一面`），驱动看板 DDL 提醒 |
+| DDL日期 | datetime `yyyy/MM/dd` | DDL 的机器判定字段：总览按它分「未来 7 天/已过期」，看板按它取数 |
+| DDL事项 | text | DDL 的展示文案（如 `4.2 19:30 一面`）；与 DDL日期 同步写入/清空 |
 
 ### 表 2「简历库」
 版本(text 主字段) / 日期(datetime) / 简历全文(text)
@@ -187,13 +195,14 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 2. **生成 JD 核心拆解**（格式见下），写入 `JD核心拆解`
 3. **读「评分规则」表算分**：按「评分算法」逐维对照简历算匹配分与策略分
 4. **给建议，确认后写入**：先输出拆解+评分+依据（引用 JD 条款与简历对应点），**用户确认后再写表**（用户主动说"直接录"可跳过确认）。写入字段：`评分`（匹配分）、`评分拆解`（格式见下）、`优先级`
-5. **补全**：有进度查询链接填 `进度查询链接`；有 DDL/内推等真实信息填 `备注` 与 `DDL事项`；投递日期填当天
+5. **补全**：有进度查询链接填 `进度查询链接`；有 DDL 同步填 `DDL日期`（datetime）与 `DDL事项`（文案）；内推等真实信息填 `备注`；投递日期填当天，「最近更新」写当前时间
 
 ### 评分拆解格式与示例
 
 格式：`匹配X（硬性a/经验b/技能c）/策略Y（方向d/平台e/城市f）`
 
-示例：`匹配7.5（硬性8/经验8/技能6）/策略8.2（方向10/平台7/城市5.6）`
+示例（数字与权重自洽，允许 ±0.1 取整）：`匹配7.6（硬性8/经验8/技能6）/策略8.1（方向10/平台7/城市5.6）`
+（核对：匹配=0.4×8+0.4×8+0.2×6=7.6；策略=0.45×10+0.35×7+0.2×5.6≈8.1）
 
 ### JD 核心拆解格式
 
@@ -262,13 +271,18 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 
 **更新 ≠ 新建**：`+record-upsert` 不按业务键自动更新——不带 `--record-id` 就是新建。正确姿势：
 
-1. 搜索定位（加 `--format json` 便于解析，record_id 从返回的 `data.record_id_list` 取）：
-   `+record-search --format json --json '{"keyword":"<公司名>","search_fields":["公司"]}'`
-2. `+record-upsert --record-id <id> --json '<仅变更字段>'` 更新
+1. **双条件精确定位**（公司+岗位，避免同公司多岗更新错行）：
+   ```bash
+   lark-cli base +record-list --base-token <token> --table-id 投递记录 --as user --format json \
+     --filter-json '{"logic":"and","conditions":[["公司","==","<公司>"],["岗位","==","<岗位>"]]}'
+   # record_id 在 data.record_id_list；模糊匹配把 == 换成 intersects
+   ```
+   命中多条时**列出候选让用户选**，不要自行挑第一条
+2. `+record-upsert --record-id <id> --json '<仅变更字段>'` 更新；**同时把「最近更新」写为当前时间**
 
 - 投递日期写入用 `"2026-03-24 10:00"` 格式；单选字段写入传**数组**（如 `"状态":["已投递"]`）；完整 CellValue 规范见 references/table-schema.md
 - 删除/改字段结构需用户确认
-- **DDL 管理**：有 DDL/面试时间 → 对应记录 `DDL事项` 写短文本（如 `4.2 19:30 一面`）；完成后清空该字段，看板自动刷新。**DDL 只写这个字段，不创建飞书任务**
+- **DDL 管理**：有 DDL/面试时间 → 同步写「DDL日期」（datetime）与「DDL事项」（展示文案，如 `4.2 19:30 一面`）；完成后**两个字段一起清空**，看板自动刷新。**DDL 只写这两个字段，不创建飞书任务**
 - 用户改偏好/权重 → 改「评分规则」表对应行，不动 skill
 
 ## 可视化看板

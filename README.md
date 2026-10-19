@@ -1,6 +1,6 @@
 # 秋招助理（qiuzhao） Skill
 
-> v1.0.0 · 适配 lark-cli ≥ 1.0.96
+> v1.0.1 · 实测于 lark-cli 1.0.96
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 首次使用自动初始化（创建飞书表格结构、引导设置偏好），数据全部存在你自己的飞书账号下，本地只存指针。
@@ -10,16 +10,16 @@
 ### 1. 准备 Claude Code 与 lark-cli
 
 - 装好 [Claude Code](https://claude.com/claude-code)
-- 装飞书命令行工具 lark-cli（公开 npm 包 [@larksuite/cli](https://www.npmjs.com/package/@larksuite/cli)，需 Node.js ≥ 18）：
+- 装飞书命令行工具 lark-cli（公开 npm 包 [@larksuite/cli](https://www.npmjs.com/package/@larksuite/cli)，需 Node.js ≥ 16，建议 18+）：
 
 ```bash
-npm install -g @larksuite/cli   # 建议 ≥ 1.0.96
+npm install -g @larksuite/cli@1.0.96   # 本文实测版本；更新版本理论兼容、未复测
 lark-cli config init --new      # 首次：初始化配置（会引导你在浏览器完成）
 lark-cli auth login --domain base,docs,drive   # 用你自己的飞书账号授权；不确定范围可 --domain all
 lark-cli auth status            # 确认通过
 ```
 
-> `--domain base,docs,drive` 是本 skill 所需的最小范围：base 建表读写；docs/drive 用于「贴链接/搜标题定位表格」。少给会导致初始化降级路径不可用。
+> `--domain base,docs,drive` 是推荐范围：base 域负责建表读写与 wiki 链接解析；docs/drive 提供「贴链接/搜标题定位表格」的文档搜索能力。只授权 base 也可用，但贴链接解析可能受限。
 
 ### 2. 把本仓库装进技能目录
 
@@ -48,11 +48,11 @@ git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills
 ## 初始化后会发生什么
 
 - 自动在飞书创建「秋招投递管理」多维表格（失败则引导你手动建表贴链接）
-- 自动建 **6 张表** + 字段：投递记录 / 简历库 / 个人信息 / 评分规则 / Offer评估 / 面试记录
+- 自动建 **6 张表** + 字段：投递记录（含「最近更新」「DDL日期」机器字段）/ 简历库 / 个人信息 / 评分规则 / Offer评估 / 面试记录
 - 交互式询问你的**方向偏好**和**城市偏好**（一次一问），生成具体评分档位后写入 **13 行**评分规则
 - 可选收集画像（基本画像/经历/投递策略/故事线/短板应对，各自用途会说明）
-- 创建「投递进度看板」7 个组件：总投递岗位数（指标卡）/ 各状态分布（柱状图）/ 优先级分布（环形图）/ 各优先级平均评分（柱状图）/ 投递日期趋势（折线图）/ DDL 提醒（柱状图）/ 面试评分走势（面积图）
-- 最后逐项校验（6 表 / 13 行规则 / 7 组件 / 关联字段），把 base_token、table_id 等存到 `~/.config/qiuzhao/config.json`
+- 创建「投递进度看板」7 个组件：总投递岗位数（指标卡）/ 各状态分布（柱状图）/ 优先级分布（环形图）/ 各优先级平均评分（柱状图）/ 投递日期趋势（折线图）/ DDL 提醒（柱状图，按 DDL日期）/ 面试评分走势（面积图）
+- 把 base_token、table_id 等存到 `~/.config/qiuzhao/config.json`，最后逐项校验（6 表 / 13 行规则 / 7 组件 / 关联字段）
 
 之后随时改「评分规则」表即可调整权重和档位——改表不改代码。
 
