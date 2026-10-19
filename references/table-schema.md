@@ -139,13 +139,13 @@ lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --as u
 }'
 ```
 
-**更新已有记录 ≠ 新建**：`+record-upsert` 不会按业务键自动更新——不带 `--record-id` 就是新建一条。更新必须先**双条件定位**（公司+岗位，避免同公司多岗更新错行）再更新：
+**更新示例**（完整更新语义见 SKILL「记录更新」——更新 ≠ 新建，须先定位 record_id）：
 
 ```bash
-# 定位（--filter-json 双条件：== 精确 / intersects 模糊；record_id 在 data.record_id_list）
+# 定位（--filter-json 双条件；record_id 在 data.record_id_list）
 lark-cli base +record-list --base-token <token> --table-id 投递记录 --as user --format json \
   --filter-json '{"logic":"and","conditions":[["公司","==","示例公司"],["岗位","==","产品经理"]]}'
-# 命中多条时列出候选让用户选，不要自行挑第一条；更新时同步写「最近更新」
+# 更新时同步写「最近更新」
 lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --record-id <id> --as user \
   --json '{"状态":["笔试"],"最近更新":"2026-03-28 14:00"}'
 ```
