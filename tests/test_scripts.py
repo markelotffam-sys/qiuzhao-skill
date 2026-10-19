@@ -197,18 +197,28 @@ class TestFixFieldsMergesOptions(unittest.TestCase):
 class TestWindowsArgPassthrough(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "win32", "Windows 专用：走 qz_lib.lark() 真实调用链")
     def test_lark_call_chain_keeps_args_intact(self):
-        """经 qz_lib.lark() 完整调用链（含 cmd /c 包装）传中文/空格/换行 JSON 不被拆坏。"""
+        """经 qz_lib.lark() 完整调用链（含 cmd /c 包装）传中文/空格/换行 JSON 不被拆坏。
+
+        fake .cmd 把收到的参数原样写入 args.txt（ground truth），输出固定 JSON 供 lark() 解析——
+        避免 echo 嵌套引号污染测试本身。
+        """
         import tempfile
         payload = '{"公司":"示例 有限 公司","JD核心拆解":"【a】b\n【c】"}'
         with tempfile.TemporaryDirectory() as td:
             shim = Path(td) / "fake-lark.cmd"
-            # 回显参数并按 lark-cli 的方式输出 JSON（ok:true），供 lark() 解析
-            shim.write_text('@echo off\r\necho {"ok":true,"echoed":"%*"}', encoding="utf-8")
+            args_out = Path(td) / "args.txt"
+            shim.write_text(
+                '@echo off\r\n'
+                'echo %*>"%~dp0args.txt"\r\n'
+                'echo {"ok":true}', encoding="utf-8")
             with mock.patch.object(qz, "find_lark_cli", return_value=str(shim)):
                 d = qz.lark("base", "+record-upsert", "--json", payload)
-        self.assertTrue(d.get("ok"))
-        self.assertIn("示例 有限 公司", d.get("echoed", ""))
-        self.assertIn("【a】b", d.get("echoed", ""))
+            self.assertTrue(d.get("ok"))
+            got = args_out.read_text(encoding="utf-8", errors="replace")
+            # 参数完整到达：中文、空格、换行转义序列都在
+            self.assertIn("示例 有限 公司", got)
+            self.assertIn("【a】b", got)
+            self.assertIn("+record-upsert", got)
 
     def test_exe_preferred_over_cmd_shim(self):
         """PATH 上命中 .cmd 时，同目录存在 .exe 则优先返回 .exe。"""
