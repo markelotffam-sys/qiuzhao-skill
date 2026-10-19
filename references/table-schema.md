@@ -29,7 +29,7 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "<用户本�
   {"name":"投递日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
   {"name":"最近更新","type":"datetime","style":{"format":"yyyy/MM/dd"}},
   {"name":"进度查询链接","type":"text","style":{"type":"url"}},
-  {"name":"状态","type":"select","multiple":false,"options":[{"name":"待投递"},{"name":"已投递"},{"name":"筛选中"},{"name":"笔试"},{"name":"一面"},{"name":"二面"},{"name":"HR面"},{"name":"Offer"},{"name":"已挂"},{"name":"放弃"}]},
+  {"name":"状态","type":"select","multiple":false,"options":[{"name":"待投递"},{"name":"已投递"},{"name":"筛选中"},{"name":"笔试"},{"name":"一面"},{"name":"二面"},{"name":"三面"},{"name":"HR面"},{"name":"Offer"},{"name":"已挂"},{"name":"放弃"}]},
   {"name":"评分","type":"number","style":{"type":"plain","precision":1}},
   {"name":"评分拆解","type":"text"},
   {"name":"优先级","type":"select","multiple":false,"options":[{"name":"P0"},{"name":"P1"},{"name":"P2"}]},

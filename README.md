@@ -1,6 +1,6 @@
 # 秋招助理（qiuzhao） Skill
 
-> v1.0.2 · 实测于 lark-cli 1.0.96（建议同版本）
+> v1.0.3 · 实测于 lark-cli 1.0.96（建议同版本）
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 首次使用自动初始化（创建飞书表格结构、引导设置偏好），数据全部存在你自己的飞书账号下，本地只存指针。
@@ -15,7 +15,7 @@
 ```bash
 npm install -g @larksuite/cli@1.0.96   # 本文实测版本；更新版本理论兼容、未复测
 lark-cli config init --new      # 首次：初始化配置（会引导你在浏览器完成）
-lark-cli auth login --domain base,docs,drive   # 用你自己的飞书账号授权；不确定范围可 --domain all
+lark-cli auth login --domain base   # 用你自己的飞书账号授权（base 域已够用；想让 agent 读文档/Drive 再加 docs,drive）
 lark-cli auth status            # 确认通过
 ```
 
