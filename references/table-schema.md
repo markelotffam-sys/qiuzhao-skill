@@ -1,6 +1,6 @@
-# 六张表的字段 Schema（可直接执行）
+# 六张表的字段 Schema
 
-> Source of truth：`lark-cli skills read lark-base/references/lark-base-field-schema.md`（CLI 内置）。本文档提供可直接复制执行的 `--fields` JSON；**建表前不要自创字段属性**。
+> Source of truth：`lark-cli skills read lark-base/references/lark-base-field-schema.md`（CLI 内置）。本文件提供各表字段 JSON（建表前不要自创字段属性）；**含 `--fields` 的完整可执行命令在 [SKILL.md](../SKILL.md) Step 1**。
 > 实测版本：lark-cli 1.0.96。
 
 ## 类型速查（本 skill 用到的 5 种）
@@ -21,9 +21,10 @@
 
 ## 表 1「投递记录」（base 的第一张表）
 
-```bash
-lark-cli base +base-create --name "秋招投递管理" --time-zone "<用户本地时区>" \
-  --table-name "投递记录" --fields '[
+> **完整可执行命令（含 `--fields`）见 [SKILL.md](../SKILL.md) Step 1**——本文件只维护字段 schema，避免两处命令漂移。下述 JSON 数组即 Step 1 命令 `--fields` 的值。
+
+```json
+[
   {"name":"公司","type":"text"},
   {"name":"岗位","type":"text"},
   {"name":"投递日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
@@ -38,10 +39,10 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "<用户本�
   {"name":"备注","type":"text"},
   {"name":"DDL日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
   {"name":"DDL事项","type":"text"}
-]' --as user
+]
 ```
 
-> 若 base 已存在（降级路径/续跑），改用 `+table-create --base-token <token> --name "投递记录" --fields '<同上数组>'`。
+> 若 base 已存在（降级路径/续跑），用 `+table-create --base-token <token> --name "投递记录" --fields '<上述 JSON 数组>'` 建表。
 
 ## 表 2「简历库」
 

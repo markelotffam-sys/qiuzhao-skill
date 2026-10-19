@@ -1,6 +1,6 @@
 # 秋招助理（qiuzhao） Skill
 
-> v1.0.5 · 实测于 lark-cli 1.0.96（建议同版本）
+> v1.0.6 · 实测于 lark-cli 1.0.96（建议同版本）
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 首次使用自动初始化（创建飞书表格结构、引导设置偏好），数据全部存在你自己的飞书账号下，本地只存指针。
@@ -80,11 +80,8 @@ git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills
 **想改评分权重/偏好？**
 直接改飞书「评分规则」表对应行（「权重」列或「档位规则」列），不用动 skill。
 
-**换电脑了？**
-重新安装 skill，`/qiuzhao 初始化` 时把原来的表格链接发过来即可接入，数据不丢；skill 会自动对比补齐缺失字段（含升级新增字段），旧记录的「最近更新」「DDL日期」按引导回填。
-
-**配置文件丢了？**
-config.json 只是指针，丢了重新初始化、贴原表格链接即可恢复。
+**换电脑了？配置文件丢了？**
+config.json 只是指针，丢了一样能恢复：重新安装 skill，`/qiuzhao 初始化` 时把原来的表格链接发过来即可接入，数据不丢；skill 会自动对比补齐缺失字段，旧记录的「最近更新」「DDL日期」按引导回填。
 
 **建表/看板命令报错？**
 `--fields` 和 `--data-config` 是严格的 JSON schema，本仓库 `references/` 下有可直接复制的模板；也可以先 `lark-cli skills read lark-base` 查看 CLI 内置文档。

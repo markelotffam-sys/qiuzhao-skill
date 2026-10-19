@@ -1,6 +1,5 @@
 # 运行时生成的指针配置——绝不能提交（含 base_token）
 config.json
-**/config.json
 
 # 系统/打包垃圾
 .DS_Store

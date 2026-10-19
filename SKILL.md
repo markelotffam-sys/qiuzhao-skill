@@ -1,10 +1,10 @@
 ---
 name: qiuzhao
-version: 1.0.5
+version: 1.0.6
 description: "校招投递管理：录入JD、评估岗位契合度、跟踪投递进度、记录Offer、录入简历、面试复盘。数据存飞书多维表格。触发：/qiuzhao 或用户提及秋招/校招/投递/岗位评估/Offer/面试复盘。"
 ---
 
-# 秋招助理（qiuzhao） v1.0.5
+# 秋招助理（qiuzhao） v1.0.6
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 数据全部存储在用户自己的飞书多维表格中，本地只保留指针配置文件（`~/.config/qiuzhao/config.json`），不含业务数据。
@@ -33,8 +33,8 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 1. **各状态计数**：一行列出每个状态的记录数（如 `已投递 12 · 笔试 3 · 一面 2 · 已挂 5 …`）
 2. **P0 待办列表**：P0 且状态非终态（排除 Offer/已挂/放弃）的记录，按评分降序；每条含 公司/岗位/状态/评分
-3. **DDL 两段**（以「DDL日期」字段判定，「DDL事项」只作展示文案；两段按时间戳比较、互斥不重叠）：
-   - 未来 7 天：DDL日期 **> 当前时间** 且 ≤ 当前时间+7 天，按时间升序
+3. **DDL 两段**（以「DDL日期」字段判定，「DDL事项」只作展示文案；两段互斥不重叠）：
+   - 未来 7 天（自然日口径）：DDL日期 **> 当前时间** 且 ≤ **今天+7 的 23:59**，按时间升序
    - 已过期：DDL日期 **≤ 当前时间** 且两字段均未清空，提示用户清理
    - 另提示：「DDL事项」非空但「DDL日期」为空的 N 条（旧数据，建议回填，否则 DDL 会漏显）
 4. **停滞提醒**：状态非终态且「最近更新」距今 >14 天，列公司+岗位+当前状态。「最近更新」为空的记录**跳过不判**（勿用投递日期兜底，会把全部在投岗误报为停滞），并在输出末尾提示"另有 N 条缺「最近更新」，建议回填"
@@ -56,7 +56,7 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 ### Step 1 — 确定 base（全自动优先）
 
-先尝试自动创建（base + 第一张表「投递记录」一次完成）。以下命令**可直接复制执行**（与 [references/table-schema.md](references/table-schema.md) 表 1 相同，如两处不一致以 references 为准）；非中国区用户把 `--time-zone` 换成用户本地时区：
+先尝试自动创建（base + 第一张表「投递记录」一次完成）。以下命令**可直接复制执行**；`--fields` 的 JSON 与 [references/table-schema.md](references/table-schema.md) 表 1 一致（schema 核对以 references 为准，执行用本命令）；非中国区用户把 `--time-zone` 换成用户本地时区：
 
 ```bash
 lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shanghai" \
@@ -104,7 +104,7 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 **字段补齐必须在建看板（Step 6）之前完成**。
 
 **旧数据迁移**（接入含旧记录的 base 时）：
-- 「最近更新」：批量初始化为当前时间。用 `+record-list --limit 200` 分页取全量 record_id，再按 **map 形状**分批回填（单次上限 200 条，超出分批）：
+- 「最近更新」：批量初始化为当前时间。用 `+record-list --limit 200 --offset <0/200/400…>` 翻页取全量 record_id（也可 `--format ndjson` 一次取最多 2000 条），再按 **map 形状**分批回填（单次上限 200 条，超出分批）：
   ```bash
   lark-cli base +record-batch-update --base-token <token> --table-id 投递记录 --as user \
     --json '{"update_records":{"recA":{"最近更新":"2026-03-28 14:00"},"recB":{"最近更新":"2026-03-28 14:00"}}}'
