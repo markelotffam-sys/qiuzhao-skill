@@ -195,20 +195,68 @@ class TestFixFieldsMergesOptions(unittest.TestCase):
 
 
 class TestWindowsArgPassthrough(unittest.TestCase):
-    @unittest.skipUnless(sys.platform == "win32", "Windows 专用：验证 cmd /c 参数传递不被拆坏")
-    def test_cmd_shim_receives_intact_args(self):
-        """fake .cmd 回显 %*，验证带引号/空格/中文的 --json 参数完整到达。"""
-        import os
-        import subprocess
+    @unittest.skipUnless(sys.platform == "win32", "Windows 专用：走 qz_lib.lark() 真实调用链")
+    def test_lark_call_chain_keeps_args_intact(self):
+        """经 qz_lib.lark() 完整调用链（含 cmd /c 包装）传中文/空格/换行 JSON 不被拆坏。"""
         import tempfile
         payload = '{"公司":"示例 有限 公司","JD核心拆解":"【a】b\n【c】"}'
         with tempfile.TemporaryDirectory() as td:
             shim = Path(td) / "fake-lark.cmd"
-            shim.write_text("@echo off\r\necho %*", encoding="utf-8")
-            proc = subprocess.run(["cmd", "/c", str(shim), "--json", payload],
-                                  capture_output=True, text=True, encoding="utf-8", errors="replace")
-            self.assertIn("示例 有限 公司", proc.stdout)
-            self.assertIn("【a】b", proc.stdout)
+            # 回显参数并按 lark-cli 的方式输出 JSON（ok:true），供 lark() 解析
+            shim.write_text('@echo off\r\necho {"ok":true,"echoed":"%*"}', encoding="utf-8")
+            with mock.patch.object(qz, "find_lark_cli", return_value=str(shim)):
+                d = qz.lark("base", "+record-upsert", "--json", payload)
+        self.assertTrue(d.get("ok"))
+        self.assertIn("示例 有限 公司", d.get("echoed", ""))
+        self.assertIn("【a】b", d.get("echoed", ""))
+
+    def test_exe_preferred_over_cmd_shim(self):
+        """PATH 上命中 .cmd 时，同目录存在 .exe 则优先返回 .exe。"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            cmd_p = Path(td) / "lark-cli.cmd"
+            exe_p = Path(td) / "lark-cli.exe"
+            cmd_p.write_text("@echo off", encoding="utf-8")
+            exe_p.write_bytes(b"")
+            with mock.patch.object(qz.shutil, "which", return_value=str(cmd_p)):
+                self.assertEqual(qz.find_lark_cli(), str(exe_p))
+
+
+class TestForceNew(unittest.TestCase):
+    def _args(self, force_new):
+        return mock.Mock(base_url=None, force_new=force_new,
+                         direction="支付,金融科技", city="北京",
+                         name="x", time_zone="Asia/Shanghai")
+
+    def test_unreachable_base_aborts_without_force(self):
+        """base 不可达且无 --force-new → 中止，不新建。"""
+        cfg = {"base_token": "tok123", "tables": {}}
+        args = self._args(force_new=False)
+        with mock.patch.object(qz, "try_load_config", return_value=cfg), \
+             mock.patch.object(qz, "base_reachable", return_value=False), \
+             mock.patch.object(qz, "lark") as m:
+            with self.assertRaises(SystemExit):
+                bootstrap.resolve_base(args)
+        m.assert_not_called()  # 一次命令都没发，更别说 base-create
+
+    def test_force_new_backs_up_config(self):
+        """--force-new → 原 config 备份为 .bak 后新建。"""
+        cfg = {"base_token": "tok123", "tables": {}}
+        args = self._args(force_new=True)
+
+        def fake_lark(*a, **k):
+            return {"ok": True, "data": {"base": {"base_token": "newtok", "url": "u"}}}
+
+        with mock.patch.object(qz, "try_load_config", return_value=cfg), \
+             mock.patch.object(qz, "base_reachable", return_value=False), \
+             mock.patch.object(qz, "lark", side_effect=fake_lark), \
+             mock.patch.object(qz, "save_config"), \
+             mock.patch.object(Path, "write_text") as wt:
+            token, _ = bootstrap.resolve_base(args)
+        self.assertEqual(token, "newtok")
+        self.assertTrue(any(".json.bak" in str(c.args[0]) if c.args else False
+                            or "tok123" in str(c.args) for c in wt.call_args_list)
+                        or any("tok123" in str(c) for c in wt.call_args_list))
 
 
 class TestOverviewHelpers(unittest.TestCase):

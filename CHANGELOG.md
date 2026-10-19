@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.4 — 2026-10-19
+
+把"Windows 一等公民"从声明做成事实：
+
+- `find_lark_cli` 真正优先 `.exe`：显式探测 npm 包内部 `node_modules\@larksuite\cli\bin\lark-cli.exe`（不在 PATH，which 找不到）；`.cmd` shim 同目录有 `.exe` 也优先
+- Windows 测试改走 `qz_lib.lark()` **完整调用链**（不再只测 `cmd /c`）；新增 exe 优先、`--force-new` 备份、不可达中止三组测试（共 19 项）
+- `--fix-fields` merge 保留 live 字段的 description 等属性（更接近无损）
+- 导出文案如实：Unix 700/600，Windows 需手动 ACL（chmod 对 Windows 不适用）
+
 ## 1.1.3 — 2026-10-19
 
 Windows 边界修复与防误建：

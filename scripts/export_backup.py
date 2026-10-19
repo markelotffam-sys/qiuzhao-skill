@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""导出（不含自动恢复）：把 6 张表导出为本地 JSON（默认 ~/qiuzhao-backup/<日期>/，权限 700/600）。
+"""导出（不含自动恢复）：把 6 张表导出为本地 JSON（默认 ~/qiuzhao-backup/<日期>/；Unix 收紧为 700/600，Windows 另需手动 ACL）。
 
 用法：python3 scripts/export_backup.py [--out DIR]
 """
@@ -44,7 +44,7 @@ def main() -> int:
         except OSError:
             pass
         print(f"✓ {name}: {len(rows)} 条")
-    print(f"\n导出完成：{out}（共 {total} 条，目录 700/文件 600）。含 base_token 与个人数据，勿分享该目录；此为导出（不含自动恢复），恢复需导入或人工回填。")
+    print(f"\n导出完成：{out}（共 {total} 条；Unix 权限 700/600，Windows 不适用 chmod——如需收紧请手动设 ACL）。含 base_token 与个人数据，勿分享该目录；此为导出（不含自动恢复），恢复需导入或人工回填。")
     return 0
 
 

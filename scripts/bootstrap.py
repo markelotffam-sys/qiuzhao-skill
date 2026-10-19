@@ -121,8 +121,12 @@ def ensure_fields(base_token: str, tables: dict, fix: bool) -> None:
                         for o in raw:
                             if isinstance(o, dict) and o.get("name") and o["name"] not in merged:
                                 merged[o["name"]] = dict(o)
-                        full = dict(spec)
+                        # 以 live 为基础保留 description 等非 schema 属性，再合并 schema 必需键与选项
+                        full = {k: v for k, v in live[fname].items()
+                                if k in ("description", "hue", "lightness")}
+                        full.update(spec)
                         full["options"] = list(merged.values())
+                        full.pop("id", None)
                         qz.lark("base", "+field-update", "--base-token", base_token,
                                 "--table-id", tables[name], "--field-id", live[fname].get("id") or fname,
                                 "--json", json.dumps(full, ensure_ascii=False), "--yes")

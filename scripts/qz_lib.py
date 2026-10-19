@@ -25,16 +25,29 @@ LEGACY_CONFIG_PATH = Path.home() / ".claude" / "skills" / "qiuzhao" / "config.js
 
 
 def find_lark_cli() -> str:
-    # Windows 优先 .exe（真二进制，参数不经 cmd 引号解析）；.cmd 是 npm shim，需 cmd /c 且引号易被拆坏
+    """定位 lark-cli。Windows 优先真 .exe（参数不经 cmd 引号解析）。
+
+    npm 全局安装的 Windows 布局：PATH 里只有 shim（.cmd/.ps1），真二进制
+    在 node_modules\@larksuite\cli\ 内部——which 找不到，必须显式列候选。
+    """
+    appdata = Path(os.environ.get("APPDATA", ""))
+    # 1) PATH 上的真 exe（自定义安装/便携版）
     for name in ("lark-cli.exe", "lark-cli", "lark-cli.cmd"):
         exe = shutil.which(name)
         if exe:
+            # which("lark-cli") 在 Windows 会经 PATHEXT 命中 .cmd——若能同时拿到 .exe 就优先
+            if exe.lower().endswith(".cmd"):
+                sibling = Path(exe).with_suffix(".exe")
+                if sibling.exists():
+                    return str(sibling)
             return exe
+    # 2) npm 包内部的真 exe（Windows npm 全局；不在 PATH，需逐个候选）
     candidates = [
-        Path.home() / ".npm-global" / "bin" / "lark-cli",              # Unix 手装 npm 前缀
-        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli.exe",  # Windows npm 全局（优先 exe）
-        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli.cmd",
-        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli",
+        appdata / "npm" / "node_modules" / "@larksuite" / "cli" / "bin" / "lark-cli.exe",
+        appdata / "npm" / "node_modules" / "@larksuite" / "cli" / "lark-cli.exe",
+        appdata / "npm" / "node_modules" / ".bin" / "lark-cli.exe",
+        Path.home() / ".npm-global" / "bin" / "lark-cli",               # Unix 手装 npm 前缀
+        appdata / "npm" / "lark-cli.cmd",                               # 兜底：npm shim（需 cmd /c）
     ]
     for cand in candidates:
         if cand and cand.exists():
