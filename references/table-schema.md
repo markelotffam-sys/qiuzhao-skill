@@ -1,0 +1,137 @@
+# 六张表的字段 Schema（可直接执行）
+
+> Source of truth：`lark-cli skills read lark-base/references/lark-base-field-schema.md`（CLI 内置）。本文档提供可直接复制执行的 `--fields` JSON；**建表前不要自创字段属性**。
+> 实测版本：lark-cli 1.0.96。
+
+## 类型速查（本 skill 用到的 5 种）
+
+| 语义 | 机器类型 | 注意 |
+|---|---|---|
+| 文本/链接样式/长文 | `text` | 超链接是 `style:{"type":"url"}`，**没有** `type:"url"` |
+| 数字/评分/金额 | `number` | `style.type` 默认 `plain`，可设 `precision` |
+| 单选 | `select` | `multiple:false`，`options:[{name},...]` 一次建全 |
+| 日期 | `datetime` | `style.format` 如 `yyyy/MM/dd`；**没有** `type:"date"` |
+| 关联记录 | `link` | 必填 `link_table`（目标表名） |
+
+## 建表顺序（必须遵守）
+
+1. **投递记录**（用 `+base-create --table-name --fields` 随 base 一起建）
+2. 简历库 / 个人信息 / 评分规则 / Offer评估（任意顺序）
+3. **面试记录**（最后建——它的「关联投递」link 指向投递记录）
+
+## 表 1「投递记录」（base 的第一张表）
+
+```bash
+lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shanghai" \
+  --table-name "投递记录" --fields '[
+  {"name":"公司","type":"text"},
+  {"name":"岗位","type":"text"},
+  {"name":"投递日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
+  {"name":"进度查询链接","type":"text","style":{"type":"url"}},
+  {"name":"状态","type":"select","multiple":false,"options":[{"name":"待投递"},{"name":"已投递"},{"name":"筛选中"},{"name":"笔试"},{"name":"一面"},{"name":"二面"},{"name":"HR面"},{"name":"Offer"},{"name":"已挂"},{"name":"放弃"}]},
+  {"name":"评分","type":"number","style":{"type":"plain","precision":1}},
+  {"name":"评分拆解","type":"text"},
+  {"name":"优先级","type":"select","multiple":false,"options":[{"name":"P0"},{"name":"P1"},{"name":"P2"}]},
+  {"name":"JD核心拆解","type":"text"},
+  {"name":"JD原文","type":"text"},
+  {"name":"备注","type":"text"},
+  {"name":"DDL事项","type":"text"}
+]' --as user
+```
+
+> 若 base 已存在（降级路径/续跑），改用 `+table-create --base-token <token> --name "投递记录" --fields '<同上数组>'`。
+
+## 表 2「简历库」
+
+```json
+[
+  {"name":"版本","type":"text"},
+  {"name":"日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
+  {"name":"简历全文","type":"text"}
+]
+```
+
+## 表 3「个人信息」
+
+```json
+[
+  {"name":"项","type":"text"},
+  {"name":"值","type":"text"}
+]
+```
+
+## 表 4「评分规则」
+
+```json
+[
+  {"name":"模块","type":"text"},
+  {"name":"维度","type":"text"},
+  {"name":"权重","type":"number","style":{"type":"plain","precision":0}},
+  {"name":"档位规则","type":"text"}
+]
+```
+
+## 表 5「Offer评估」
+
+```json
+[
+  {"name":"公司","type":"text"},
+  {"name":"岗位","type":"text"},
+  {"name":"城市","type":"text"},
+  {"name":"评估分","type":"number","style":{"type":"plain","precision":1}},
+  {"name":"评估拆解","type":"text"},
+  {"name":"总包(万/年)","type":"number","style":{"type":"plain","precision":1}},
+  {"name":"Base月薪(元)","type":"number","style":{"type":"plain","precision":0}},
+  {"name":"团队/氛围分","type":"number","style":{"type":"plain","precision":1}},
+  {"name":"备注","type":"text"}
+]
+```
+
+## 表 6「面试记录」（最后建）
+
+```json
+[
+  {"name":"公司","type":"text"},
+  {"name":"岗位","type":"text"},
+  {"name":"关联投递","type":"link","link_table":"投递记录"},
+  {"name":"面试日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
+  {"name":"面试轮次","type":"select","multiple":false,"options":[{"name":"一面"},{"name":"二面"},{"name":"三面"},{"name":"HR面"}]},
+  {"name":"面试时长","type":"number","style":{"type":"plain","precision":0}},
+  {"name":"面试评分","type":"number","style":{"type":"plain","precision":1}},
+  {"name":"评分拆解","type":"text"},
+  {"name":"面试总结","type":"text"},
+  {"name":"关键问题","type":"text"},
+  {"name":"改进清单","type":"text"},
+  {"name":"待办","type":"text"}
+]
+```
+
+> link 建字段时若 `bidirectional:true` 会在投递记录反向生成一个关联字段——本 skill 用默认 `false` 即可。校验字段数时若发现投递记录多了个反向 link 字段，属正常现象，不是重复建字段。
+
+## 写入规范（CellValue 形态，写记录前必读）
+
+| 字段类型 | CellValue 写法 |
+|---|---|
+| text | `"字符串"` |
+| number | `12.5`（裸数字） |
+| select（单选） | `["已投递"]`——**也是数组**，单选数组里只能有一个选项 |
+| select（多选） | `["标签A","标签B"]` |
+| datetime | `"2026-03-24 10:00"` 字符串 |
+| link | `[{"id":"rec_xxx"}]`；写入前先用 `+record-search` 拿到目标 record_id |
+
+示例（录入一条投递记录的完整字段）：
+
+```bash
+lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --as user --json '{
+  "公司":"示例公司",
+  "岗位":"产品经理",
+  "投递日期":"2026-03-24 10:00",
+  "状态":["已投递"],
+  "评分":7.5,
+  "评分拆解":"匹配8（硬性8/经验8/技能6）/策略7（方向9/平台6/城市5）",
+  "优先级":["P1"],
+  "DDL事项":"4.2 19:30 一面"
+}'
+```
+
+**更新已有记录 ≠ 新建**：`+record-upsert` 不会按业务键自动更新——不带 `--record-id` 就是新建一条。更新必须先 `+record-search` 按公司+岗位查出 `record_id`，再 `+record-upsert --record-id <id>`。
