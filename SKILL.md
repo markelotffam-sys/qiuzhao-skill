@@ -262,7 +262,8 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shangha
 
 **更新 ≠ 新建**：`+record-upsert` 不按业务键自动更新——不带 `--record-id` 就是新建。正确姿势：
 
-1. `+record-search` 按 公司+岗位 搜出 `record_id`
+1. 搜索定位（加 `--format json` 便于解析，record_id 从返回的 `data.record_id_list` 取）：
+   `+record-search --format json --json '{"keyword":"<公司名>","search_fields":["公司"]}'`
 2. `+record-upsert --record-id <id> --json '<仅变更字段>'` 更新
 
 - 投递日期写入用 `"2026-03-24 10:00"` 格式；单选字段写入传**数组**（如 `"状态":["已投递"]`）；完整 CellValue 规范见 references/table-schema.md

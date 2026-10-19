@@ -134,4 +134,22 @@ lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --as u
 }'
 ```
 
-**更新已有记录 ≠ 新建**：`+record-upsert` 不会按业务键自动更新——不带 `--record-id` 就是新建一条。更新必须先 `+record-search` 按公司+岗位查出 `record_id`，再 `+record-upsert --record-id <id>`。
+**更新已有记录 ≠ 新建**：`+record-upsert` 不会按业务键自动更新——不带 `--record-id` 就是新建一条。更新必须先搜索拿 `record_id` 再更新：
+
+```bash
+# 搜索（--format json 便于解析；record_id 在 data.record_id_list）
+lark-cli base +record-search --base-token <token> --table-id 投递记录 --as user --format json \
+  --json '{"keyword":"示例公司","search_fields":["公司"]}'
+# 更新
+lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --record-id <id> --as user \
+  --json '{"状态":["笔试"]}'
+```
+
+**含换行/引号的长 JSON**（如 JD核心拆解多行文本）：先写入临时文件再传，避免 shell 转义出错：
+
+```bash
+cat > /tmp/record.json <<'EOF'
+{"公司":"示例公司","JD核心拆解":"【岗位方向】支付\n【核心职责】……"}
+EOF
+lark-cli base +record-upsert ... --json "$(cat /tmp/record.json)"
+```
