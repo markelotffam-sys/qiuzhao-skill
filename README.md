@@ -1,6 +1,6 @@
 # 秋招助理（qiuzhao） Skill
 
-> v1.0.1 · 实测于 lark-cli 1.0.96
+> v1.0.2 · 实测于 lark-cli 1.0.96（建议同版本）
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 首次使用自动初始化（创建飞书表格结构、引导设置偏好），数据全部存在你自己的飞书账号下，本地只存指针。
@@ -19,7 +19,7 @@ lark-cli auth login --domain base,docs,drive   # 用你自己的飞书账号授�
 lark-cli auth status            # 确认通过
 ```
 
-> `--domain base,docs,drive` 是推荐范围：base 域负责建表读写与 wiki 链接解析；docs/drive 提供「贴链接/搜标题定位表格」的文档搜索能力。只授权 base 也可用，但贴链接解析可能受限。
+> `--domain base` 即可：user 身份的 base 域已含文档搜索与 wiki 解析（`+url-resolve`/`+title-resolve` 可用）。docs/drive 可选——想让 agent 直接读文档内容或 Drive 元数据时再加。
 
 ### 2. 把本仓库装进技能目录
 
@@ -36,7 +36,7 @@ git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills
 ## 使用
 
 ```
-/qiuzhao                    # 总览：状态计数 / P0 待办 / 7天 DDL / 停滞提醒（首次自动进初始化）
+/qiuzhao                    # 总览：状态计数 / P0 待办 / 7天 DDL / 停滞提醒 / 最近面试复盘（首次自动进初始化）
 /qiuzhao 初始化             # 手动触发配置；换电脑时用它接入已有表格
 /qiuzhao 录入 [JD原文]      # 录入新岗位：拆解 + 匹配分/策略分 + 优先级
 /qiuzhao 更新 [公司+岗位]   # 更新投递状态/备注
@@ -75,13 +75,13 @@ git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills
 ## 常见问题
 
 **初始化时自动创建失败怎么办？**
-在飞书手动创建一个多维表格（空表即可），把链接发给 AI，skill 会解析链接继续。
+在飞书手动创建一个多维表格，把链接发给 AI，skill 会解析链接继续（自带的默认表会自动复用改名或经你确认后删除）。
 
 **想改评分权重/偏好？**
 直接改飞书「评分规则」表对应行（「权重」列或「档位规则」列），不用动 skill。
 
 **换电脑了？**
-重新安装 skill，`/qiuzhao 初始化` 时把原来的表格链接发过来即可接入，数据不丢。
+重新安装 skill，`/qiuzhao 初始化` 时把原来的表格链接发过来即可接入，数据不丢；skill 会自动对比补齐缺失字段（含升级新增字段），旧记录的「最近更新」「DDL日期」按引导回填。
 
 **配置文件丢了？**
 config.json 只是指针，丢了重新初始化、贴原表格链接即可恢复。

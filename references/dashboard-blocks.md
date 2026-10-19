@@ -80,6 +80,7 @@ lark-cli base +dashboard-arrange --base-token <token> --dashboard-id <did> --as 
 ```
 
 > 以「DDL日期」（datetime）为机器判定字段——自由文本「DDL事项」不可靠且无法稳定过滤。柱状图展示"哪天有几个 DDL"；文案看「DDL事项」字段。
+> 分组粒度注意：datetime 分组可能按时间戳拆柱；如出现"同一天拆成多根"，写入时把 DDL日期 归一到当天 00:00（仅影响分组展示，不影响总览判断）。
 
 ### 7. 面试评分走势（area 面积图，数据源=面试记录）
 

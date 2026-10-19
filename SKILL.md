@@ -1,15 +1,15 @@
 ---
 name: qiuzhao
-version: 1.0.1
+version: 1.0.2
 description: "校招投递管理：录入JD、评估岗位契合度、跟踪投递进度、记录Offer、录入简历、面试复盘。数据存飞书多维表格。触发：/qiuzhao 或用户提及秋招/校招/投递/岗位评估/Offer/面试复盘。"
 ---
 
-# 秋招助理（qiuzhao） v1.0.1
+# 秋招助理（qiuzhao） v1.0.2
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 数据全部存储在用户自己的飞书多维表格中，本地只保留指针配置文件（`~/.config/qiuzhao/config.json`），不含业务数据。
 
-依赖：lark-cli ≥ 1.0.96（本文档中所有 CLI 行为均实测于 1.0.96；更新版本理论兼容、未复测）。
+依赖：lark-cli，本文档所有 CLI 行为实测于 1.0.96（建议同版本；更新版本理论兼容、未复测）。
 
 ## 触发方式
 
@@ -35,8 +35,8 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 2. **P0 待办列表**：P0 且状态非终态（排除 Offer/已挂/放弃）的记录，按评分降序；每条含 公司/岗位/状态/评分
 3. **DDL 两段**（以「DDL日期」字段判定，「DDL事项」只作展示文案）：
    - 未来 7 天：DDL日期在 [今天, 今天+7] 内，按日期升序
-   - 已过期：DDL日期早于今天且两字段均未清空，提示用户清理
-4. **停滞提醒**：状态非终态且「最近更新」距今 >14 天（该字段为空则退化用「投递日期」判定），列公司+岗位+当前状态
+   - 已过期：DDL日期早于**当前时间**（含当天已过时刻）且两字段均未清空，提示用户清理
+4. **停滞提醒**：状态非终态且「最近更新」距今 >14 天，列公司+岗位+当前状态。「最近更新」为空的记录**跳过不判**（勿用投递日期兜底，会把全部在投岗误报为停滞），并在输出末尾提示"另有 N 条缺「最近更新」，建议回填"
 5. **最近面试复盘**：最近 1 条面试记录的 面试评分 + 改进清单前 3 项（无则省略本段）
 6. **看板提示**：提示可在飞书打开「投递进度看板」查看图表
 
@@ -46,7 +46,7 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 1. 确认 lark-cli 已安装且认证通过：`lark-cli auth status`
    - 未安装 → 引导按 README 安装（`npm install -g @larksuite/cli`）
-   - 未认证 → 引导 `lark-cli auth login --domain base,docs,drive`（base 域含 wiki 链接解析；url-resolve / title-resolve 的文档搜索 scope 不在 base 域内，故推荐连同 docs,drive 一起授权——若用户只授权 base，贴链接解析可能受限，届时引导补授权），完成后重查 status 再继续
+   - 未认证 → 引导 `lark-cli auth login --domain base`（user 身份的 base 域已含文档搜索 search:docs:read 与 wiki 解析，`+url-resolve`/`+title-resolve` 足够；docs/drive 可选——想让 agent 直接读文档内容或 Drive 元数据时再加），完成后重查 status 再继续
 2. 读本地配置 `~/.config/qiuzhao/config.json`：
    - 存在且有效 → 跳到「运行流程」
    - 不存在 / token 无效 → 开始初始化
@@ -67,7 +67,7 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "<按用户�
 若自动创建失败（权限等），降级：
 - 引导用户在飞书手动建一个空多维表格，把链接发给 AI
 - `lark-cli base +url-resolve --url "<链接>" --as user` 解析 base_token
-- **处理默认表**：手动建的 base 自带一张默认表——优先**复用**：`+table-update` 改名「投递记录」→ `+field-update` 把主字段改名「公司」→ `+field-create` 补齐其余字段；或经用户确认后 `+table-delete --yes` 删除再 `+table-create`
+- **处理默认表**：手动建的 base 自带一张默认表——优先**复用**：`+table-update` 改名「投递记录」→ 主字段改名「公司」（`+field-update --field-id <主字段id> --json '{"name":"公司","type":"text"}' --yes`——注意这是 **high-risk-write**，必须先征得用户同意；`--json` 是 PUT 语义，传完整字段定义而非仅 name）→ `+field-create` 补齐其余字段；或经用户确认后 `+table-delete --yes` 删除再 `+table-create`
 
 **避免重复建库**：若用户提到"之前建过/初始化过一半"，或检测到已有 base/半成品表，优先让用户提供表格链接接入，`+table-list` 对比目标结构缺啥补啥，**不要再自动创建新 base**。
 
@@ -79,7 +79,13 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "<按用户�
 2. 简历库 / 个人信息 / 评分规则 / Offer评估（任意顺序，`+table-create --fields '<json>'`）
 3. **面试记录最后建**——其「关联投递」是 `type:link, link_table:"投递记录"`
 
-每建完一张用 `+table-list` / `+field-list` 核对 table_id、字段名、类型、单选选项，记入待保存的配置。注意：link 字段若为双向会在对侧表生成反向字段，本 skill 用单向（默认），校验时不要误判为多建。
+每建完一张用 `+table-list` / `+field-list` 核对 table_id、字段名、类型、单选选项，记入待保存的配置。link 字段默认单向（`bidirectional:false`），**不会**产生反向字段；若出现反向字段说明创建时用了双向，按需保留或删除。
+
+**接入已有表（换电脑/复用/升级）必须做字段对比**：`+field-list` 逐字段对照 references/table-schema.md，缺哪个用 `+field-create` 补哪个——尤其是「最近更新」「DDL日期」（旧版数据没有这两个字段，缺失会导致看板创建失败、DDL 总览空白、停滞提醒失效）。**字段补齐必须在建看板（Step 6）之前完成**。
+
+**旧数据迁移**（接入含旧记录的 base 时）：
+- 「最近更新」：建议批量初始化为当前时间（此后由每次更新维护）；不初始化则总览会提示缺值
+- 「DDL日期」：按「DDL事项」文案人工/半自动回填对应 datetime
 
 ### Step 3 — 交互式收集偏好（一次一问，不要连问）
 
@@ -248,7 +254,8 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "<按用户�
 3. 综合分按表中权重计算（初始：薪资35% + 方向20% + 平台20% + 城市15% + 团队10%）
 4. 注水检测：总包高但 base 低（期权/年终占比大）→ 总包评分适度下调
 5. 评估分写 `评估分`，明细写 `评估拆解`
-6. 横向对比时拉出各自全部维度分
+6. **同步更新关联的投递记录**：`状态` → `Offer`、`最近更新` → 当前时间
+7. 横向对比时拉出各自全部维度分
 
 ## 面试记录流程
 
@@ -258,6 +265,7 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "<按用户�
 2. 提取面试官关键问题（只记要点）
 3. 积极信号与风险点 → `面试总结`
 4. 输出改进清单和待办
+5. **同步更新关联的投递记录**：`状态` → 对应轮次（一面/二面/HR面）、`最近更新` → 当前时间；已知下轮时间则写 `DDL日期`/`DDL事项`
 
 画像中的「故事线/转行动机」「短板与应对」在动机表达与风险点评判时优先引用。
 
@@ -296,14 +304,14 @@ lark-cli base +base-create --name "秋招投递管理" --time-zone "<按用户�
 | 3 | 优先级分布 | ring | 投递记录·优先级 |
 | 4 | 各优先级平均评分 | column | 投递记录·评分 AVG |
 | 5 | 投递日期趋势 | line | 投递记录·投递日期 |
-| 6 | DDL 提醒 | column | 投递记录·DDL事项 + 过滤非空 |
+| 6 | DDL 提醒 | column | 投递记录·DDL日期 + 过滤非空 |
 | 7 | 面试评分走势 | area | 面试记录·面试评分 |
 
 **已知工程坑（lark-cli 1.0.96 实测）**：CLI 更新 `text` 类型组件时文本会被包一层 JSON 引号、`--data-config` 吞换行——**DDL 提醒用模板 6 的数据驱动柱状图，不用 text 组件**。验证方法：新建 text 组件写单行文本 → `+dashboard-block-get` 查看是否被包引号。
 
 ## CLI 自动适配规则
 
-- 给链接 → `+url-resolve`；给标题/关键词 → `+title-resolve`（两者依赖 docs/drive 域 scope，见「前置检查」）
+- 给链接 → `+url-resolve`；给标题/关键词 → `+title-resolve`（base 域 scope 已覆盖）
 - 已有部分表 → `+table-list` 对比，缺哪张补哪张；字段同理 `+field-list` 增量补齐
 - 配置丢失 / token 失效 → 重走初始化（先 `lark-cli auth status`）
 
