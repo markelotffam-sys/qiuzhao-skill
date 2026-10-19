@@ -161,6 +161,6 @@ lark-cli base +record-upsert ... --json "$(cat /tmp/record.json)"
 ```
 
 ```powershell
-# Windows（PowerShell）：用编辑器或 Python 写文件，再读文件传参；勿用 bash heredoc
-Get-Content record.json -Raw | lark-cli base +record-upsert ... --json
+# Windows（PowerShell）：用编辑器或 Python 写文件，再以子表达式传参（--json 需要参数值，管道是 stdin 不行）
+lark-cli base +record-upsert ... --json (Get-Content record.json -Raw)
 ```

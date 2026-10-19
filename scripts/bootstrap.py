@@ -25,8 +25,9 @@ WANT_TABLES = ["投递记录", "简历库", "个人信息", "评分规则", "Off
 
 
 def parse_order(s: str) -> list:
-    """支持 '支付>金融科技' / '支付,金融科技' / '支付|金融科技'（推荐逗号，避开 shell 重定向）。"""
-    parts = re.split(r"[>＞,，|｜/]+", s)
+    """支持 '支付>金融科技' / '支付,金融科技' / '支付|金融科技'（推荐逗号，避开 shell 重定向）。
+    注意 `/` 不是分隔符——"产品/运营" 是一个完整方向名。"""
+    parts = re.split(r"[>＞,，|｜]+", s)
     return [x.strip() for x in parts if x.strip()]
 
 
@@ -40,13 +41,22 @@ def resolve_base(args) -> tuple:
         if not token:
             sys.exit(f"url-resolve 未返回 base_token：{json.dumps(data, ensure_ascii=False)[:300]}")
         return token, {}
-    # 2. 已有 config 且可达 → 续跑（幂等关键）
+    # 2. 已有 config → 优先续跑（幂等关键）
     cfg = qz.try_load_config()
-    if cfg and cfg.get("base_token") and qz.base_reachable(cfg["base_token"]):
-        print(f"✓ 检测到已有配置与可达 base（{cfg['base_token'][:8]}…），续跑模式（只补缺失）")
-        return cfg["base_token"], cfg
-    if cfg:
-        print("⚠ 配置存在但 base 不可达，将新建（如想接入旧表请用 --base-url）")
+    if cfg and cfg.get("base_token"):
+        if qz.base_reachable(cfg["base_token"]):
+            print(f"✓ 检测到已有配置与可达 base（{cfg['base_token'][:8]}…），续跑模式（只补缺失）")
+            return cfg["base_token"], cfg
+        if not args.force_new:
+            # 不可达 ≠ base 没了：网络抖动/认证过期/临时权限都会走到这。不自动新建，避免误建第二个 base
+            sys.exit(
+                f"⚠ 配置中的 base（{cfg['base_token'][:8]}…）当前不可达——可能是网络/认证临时问题，**不会自动新建**。\n"
+                "  - 先排查：lark-cli auth status；网络；稍后重试\n"
+                "  - 确实要换新库：加 --force-new（原 config 会备份为 config.json.bak）\n"
+                "  - 要接入已有表：加 --base-url \"<表格链接>\"")
+        bak = qz.CONFIG_PATH.with_suffix(".json.bak")
+        bak.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"⚠ --force-new：原 base 不可达，原配置已备份 {bak}，将新建")
     # 3. 新建 base，立即写 config（失败重跑可找回）
     d = qz.lark("base", "+base-create", "--name", args.name, "--time-zone", args.time_zone,
                 "--table-name", "投递记录",
@@ -102,16 +112,24 @@ def ensure_fields(base_token: str, tables: dict, fix: bool) -> None:
             if spec["type"] == "select":
                 want = {o["name"] for o in spec.get("options") or []}
                 raw = live[fname].get("options") or (live[fname].get("property") or {}).get("options") or []
-                missing = want - {o.get("name") for o in raw if isinstance(o, dict)}
+                live_opts = {o.get("name") for o in raw if isinstance(o, dict)}
+                missing = want - live_opts
                 if missing:
                     if fix:
+                        # PUT 是完整覆盖——必须 merge：schema 选项 + 用户自定义的 live 选项，否则自定义选项会被删
+                        merged = {o["name"]: dict(o) for o in spec.get("options") or []}
+                        for o in raw:
+                            if isinstance(o, dict) and o.get("name") and o["name"] not in merged:
+                                merged[o["name"]] = dict(o)
                         full = dict(spec)
+                        full["options"] = list(merged.values())
                         qz.lark("base", "+field-update", "--base-token", base_token,
                                 "--table-id", tables[name], "--field-id", live[fname].get("id") or fname,
                                 "--json", json.dumps(full, ensure_ascii=False), "--yes")
-                        print(f"✓ [{name}] {fname} 缺选项已补：{sorted(missing)}")
+                        kept = sorted(live_opts - want)
+                        print(f"✓ [{name}] {fname} 缺选项已补：{sorted(missing)}" + (f"（保留自定义选项 {kept}）" if kept else ""))
                     else:
-                        print(f"⚠ [{name}] {fname} 缺选项 {sorted(missing)}（加 --fix-fields 补，属 high-risk 会请求确认）")
+                        print(f"⚠ [{name}] {fname} 缺选项 {sorted(missing)}（加 --fix-fields 补齐；--fix-fields 即视为授权该 high-risk 更新）")
 
 
 def ensure_scoring_rows(base_token: str, table_id: str, direction: list, city: list) -> None:
@@ -169,7 +187,8 @@ def main() -> None:
     ap.add_argument("--name", default="秋招投递管理")
     ap.add_argument("--time-zone", default="Asia/Shanghai", help="非中国区用户改本地时区")
     ap.add_argument("--base-url", help="接入已有表格时传其链接（跳过创建 base）")
-    ap.add_argument("--fix-fields", action="store_true", help="自动补缺失字段/选项（选项更新属 high-risk）")
+    ap.add_argument("--fix-fields", action="store_true", help="自动补缺失字段/选项（该开关即视为授权 high-risk 更新；选项 merge 保留自定义项）")
+    ap.add_argument("--force-new", action="store_true", help="原 base 不可达时强制新建（原 config 备份为 .bak）")
     args = ap.parse_args()
 
     direction, city = parse_order(args.direction), parse_order(args.city)

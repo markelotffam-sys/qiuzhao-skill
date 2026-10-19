@@ -25,12 +25,15 @@ LEGACY_CONFIG_PATH = Path.home() / ".claude" / "skills" / "qiuzhao" / "config.js
 
 
 def find_lark_cli() -> str:
-    exe = shutil.which("lark-cli") or shutil.which("lark-cli.cmd")
-    if exe:
-        return exe
+    # Windows 优先 .exe（真二进制，参数不经 cmd 引号解析）；.cmd 是 npm shim，需 cmd /c 且引号易被拆坏
+    for name in ("lark-cli.exe", "lark-cli", "lark-cli.cmd"):
+        exe = shutil.which(name)
+        if exe:
+            return exe
     candidates = [
-        Path.home() / ".npm-global" / "bin" / "lark-cli",           # Unix 手装 npm 前缀
-        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli.cmd",  # Windows npm 全局
+        Path.home() / ".npm-global" / "bin" / "lark-cli",              # Unix 手装 npm 前缀
+        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli.exe",  # Windows npm 全局（优先 exe）
+        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli.cmd",
         Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli",
     ]
     for cand in candidates:

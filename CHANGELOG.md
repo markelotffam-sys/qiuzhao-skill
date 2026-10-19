@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.3 — 2026-10-19
+
+Windows 边界修复与防误建：
+
+- README：cmd 用 `%USERPROFILE%` / PowerShell 用 `$env:USERPROFILE` 分行写；验证命令补 `py -3`
+- references：PowerShell 长 JSON 示例修正（`--json (Get-Content ... -Raw)`，管道给 stdin 不行）
+- `parse_order` 不再把 `/` 当分隔符（"产品/运营" 是完整方向名）
+- `--fix-fields` 补选项时 **merge 保留用户自定义选项**（PUT 完整覆盖不丢数据）；开关即视为授权 high-risk
+- base 不可达时**不再自动新建**（防网络抖动误建第二库）：中止排查，或显式 `--force-new`（原 config 自动备份 .bak）
+- lark-cli 查找优先 `.exe`（绕开 cmd /c 引号解析）；新增 Windows 参数传递集成测试（CI 真跑）
+- 清理桌面旧 v1.0 分发包
+
+共 16 项测试（1 项 Windows 专用在 windows CI 执行）。
+
 ## 1.1.2 — 2026-10-19
 
 Windows 适配（macOS/Linux 之外把 Windows 提为一等公民）：

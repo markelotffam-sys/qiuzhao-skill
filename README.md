@@ -1,6 +1,6 @@
 # 秋招助理（qiuzhao） Skill
 
-> v1.1.2 · 实测于 lark-cli 1.0.96（建议同版本）
+> v1.1.3 · 实测于 lark-cli 1.0.96（建议同版本）
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 首次使用自动初始化（创建飞书表格结构、引导设置偏好），数据全部存在你自己的飞书账号下，本地只存指针。
@@ -10,7 +10,7 @@
 ### 1. 准备 Claude Code 与 lark-cli
 
 - 装好 [Claude Code](https://claude.com/claude-code)
-- 装 Python 3.9+（脚本用）：`python3 --version` 验证
+- 装 Python 3.9+（脚本用）：macOS/Linux 用 `python3 --version`，Windows 用 `py -3 --version`（或 `python --version`）验证
 - 装飞书命令行工具 lark-cli（公开 npm 包 [@larksuite/cli](https://www.npmjs.com/package/@larksuite/cli)，需 Node.js ≥ 16，建议 18+）：
 
 ```bash
@@ -30,10 +30,16 @@ macOS / Linux：
 git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills/qiuzhao
 ```
 
-Windows（PowerShell 或 cmd）：
+Windows：
 
 ```
+:: cmd
 git clone https://github.com/markelotffam-sys/qiuzhao-skill.git %USERPROFILE%\.claude\skills\qiuzhao
+```
+
+```powershell
+# PowerShell（注意：PowerShell 不展开 %USERPROFILE%，要用 $env:USERPROFILE）
+git clone https://github.com/markelotffam-sys/qiuzhao-skill.git "$env:USERPROFILE\.claude\skills\qiuzhao"
 ```
 
 > Windows 注意：脚本命令用 `py -3 scripts\<name>.py`（或 `python`）代替 `python3`；偏好分隔符推荐**逗号**（`--direction "支付,金融科技"`），避免 `>` 在 cmd 里被当重定向；长 JSON 示例用编辑器存文件再传，勿依赖 bash heredoc。
@@ -92,7 +98,7 @@ git clone https://github.com/markelotffam-sys/qiuzhao-skill.git %USERPROFILE%\.c
 直接改飞书「评分规则」表对应行（「权重」列或「档位规则」列），不用动 skill。
 
 **换电脑了？配置文件丢了？**
-config.json 只是指针，丢了一样能恢复：重新安装 skill，`/qiuzhao 初始化` 时把原来的表格链接发过来即可接入，数据不丢；skill 会自动对比补齐缺失字段，旧记录的「最近更新」「DDL日期」按引导回填。
+config.json 只是指针，丢了一样能恢复：重新安装 skill，`/qiuzhao 初始化` 时把原来的表格链接发过来即可接入，数据不丢；skill 会对比缺失字段——加 `--fix-fields` 自动补齐（不加则只提示）；旧记录的「最近更新」「DDL日期」按引导回填。
 
 **建表/看板命令报错？**
 `--fields` 和 `--data-config` 是严格的 JSON schema，本仓库 `references/` 下有可直接复制的模板；也可以先 `lark-cli skills read lark-base` 查看 CLI 内置文档。

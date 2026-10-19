@@ -159,6 +159,58 @@ class TestFindLarkCli(unittest.TestCase):
             self.assertEqual(qz.find_lark_cli(), str(target))
 
 
+class TestParseOrderSlash(unittest.TestCase):
+    def test_slash_is_not_separator(self):
+        """"产品/运营" 是一个方向名，不能被拆开。"""
+        self.assertEqual(bootstrap.parse_order("产品/运营,金融科技"), ["产品/运营", "金融科技"])
+        self.assertEqual(bootstrap.parse_order("产品/运营>金融科技"), ["产品/运营", "金融科技"])
+
+
+class TestFixFieldsMergesOptions(unittest.TestCase):
+    def test_user_custom_options_preserved(self):
+        """--fix-fields 补选项时保留用户自定义选项（PUT 完整覆盖不能丢数据）。"""
+        spec = {"name": "状态", "type": "select", "multiple": False,
+                "options": [{"name": "待投递"}, {"name": "已投递"}]}
+        # live 缺 schema 的「已投递」，但有用户自定义「自定义X」——补齐时两者都要在
+        live_field = {"id": "fld1", "name": "状态", "type": "select", "multiple": False,
+                      "options": [{"name": "待投递"}, {"name": "自定义X"}]}
+        d = {"ok": True, "data": {"items": [live_field]}}
+        captured = {}
+
+        def fake_lark(*args, **kwargs):
+            if "+field-list" in args:
+                return d
+            if "+field-update" in args:
+                captured["json"] = json.loads(args[args.index("--json") + 1])
+                return {"ok": True}
+            return {"ok": True, "data": {}}
+
+        all_tables = {n: f"tbl{i}" for i, n in enumerate(bootstrap.WANT_TABLES)}
+        with mock.patch.object(qz, "table_fields", side_effect=lambda name: [spec] if name == "投递记录" else []), \
+             mock.patch.object(qz, "lark", side_effect=fake_lark):
+            bootstrap.ensure_fields("tok", all_tables, fix=True)
+        names = {o["name"] for o in captured["json"]["options"]}
+        self.assertIn("自定义X", names)   # 用户自定义保留
+        self.assertEqual(names, {"待投递", "已投递", "自定义X"})
+
+
+class TestWindowsArgPassthrough(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "Windows 专用：验证 cmd /c 参数传递不被拆坏")
+    def test_cmd_shim_receives_intact_args(self):
+        """fake .cmd 回显 %*，验证带引号/空格/中文的 --json 参数完整到达。"""
+        import os
+        import subprocess
+        import tempfile
+        payload = '{"公司":"示例 有限 公司","JD核心拆解":"【a】b\n【c】"}'
+        with tempfile.TemporaryDirectory() as td:
+            shim = Path(td) / "fake-lark.cmd"
+            shim.write_text("@echo off\r\necho %*", encoding="utf-8")
+            proc = subprocess.run(["cmd", "/c", str(shim), "--json", payload],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace")
+            self.assertIn("示例 有限 公司", proc.stdout)
+            self.assertIn("【a】b", proc.stdout)
+
+
 class TestOverviewHelpers(unittest.TestCase):
     def test_parse_dt_formats(self):
         self.assertIsNotNone(overview.parse_dt("2026-03-24 10:00"))
