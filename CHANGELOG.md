@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 — 2026-10-19
+
+架构升级：**脚本做确定性，LLM 做判断**。
+
+- 新增 `scripts/` 七个脚本：一键初始化（setup）、自检（init_check）、总览（overview）、旧数据迁移（migrate_backfill，默认预览）、备份导出（export_backup）、转化率复盘（conversion_report）、schema 校验（check_schema_sync，CI）
+- 初始化从 7 步命令流收敛为「问 2 个偏好 + 跑 1 条脚本」，幂等可续跑（`--base-url` 接入已有表）
+- 字段 schema 真正单一来源：脚本运行时解析 references，CI 校验可解析性
+- 写入前预览原则：批量写入/删除/迁移先列变化再执行
+- 反馈闭环（轻量版）：各优先级进面率/Offer率复盘，只呈现事实、不自动调参
+
 ## 1.0.7 — 2026-10-19
 
 - 「未来 7 天」明确为**含今天共 7 天**（今天起至今天+6 的 23:59）

@@ -1,48 +1,55 @@
 #!/usr/bin/env python3
-"""校验 SKILL.md Step 1 的 --fields JSON 与 references/table-schema.md 表 1 的 JSON 一致。
+"""schema 一致性校验（CI）：
 
-防漂移：字段改动必须两处同步，本脚本在 CI 与本地均可运行。
-exit 0 = 一致；exit 1 = 不一致（打印差异摘要）。
+1. references/table-schema.md 的 6 张表 JSON 可解析（单一来源，脚本运行时解析它）
+2. references/dashboard-blocks.md 的 7 个 data_config 可解析
+3. scoring_rows 生成 13 行；dashboard_templates 返回 7 个组件
+exit 0 = 通过。
 """
-import json
-import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-SKILL = ROOT / "SKILL.md"
-REF = ROOT / "references" / "table-schema.md"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import qz_lib as qz
+
+WANT_TABLES = ["投递记录", "简历库", "个人信息", "评分规则", "Offer评估", "面试记录"]
 
 
-def extract_step1_fields(text: str):
-    m = re.search(r"--fields '\s*(\[.*?\])'\s*--as user", text, re.S)
-    return json.loads(m.group(1)) if m else None
+def main() -> int:
+    errors = []
 
+    # 1. 六表 schema
+    for name in WANT_TABLES:
+        try:
+            fields = qz.table_fields(name)
+            if not fields:
+                errors.append(f"表「{name}」schema 为空")
+            elif not any(f.get("name") for f in fields):
+                errors.append(f"表「{name}」字段缺 name")
+        except SystemExit as e:
+            errors.append(str(e))
+        except Exception as e:
+            errors.append(f"表「{name}」JSON 解析失败：{e}")
 
-def extract_ref_table1(text: str):
-    # 表 1 小节内的第一个 json 代码块
-    m = re.search(r"## 表 1.*?```json\n(.*?)```", text, re.S)
-    return json.loads(m.group(1)) if m else None
+    # 2. 看板模板
+    try:
+        tpls = qz.dashboard_templates()
+        if len(tpls) != 7:
+            errors.append(f"看板模板 {len(tpls)} 个 ≠ 7")
+    except Exception as e:
+        errors.append(f"看板模板解析失败：{e}")
 
+    # 3. 业务生成器
+    rows = qz.scoring_rows(["支付", "金融科技", "风控"], ["北京", "杭州"])
+    if len(rows) != 13:
+        errors.append(f"评分规则 {len(rows)} 行 ≠ 13")
 
-def main():
-    skill_fields = extract_step1_fields(SKILL.read_text(encoding="utf-8"))
-    ref_fields = extract_ref_table1(REF.read_text(encoding="utf-8"))
-    if skill_fields is None:
-        print("FAIL: 未在 SKILL.md Step 1 中解析到 --fields JSON")
+    for e in errors:
+        print(f"✗ {e}")
+    if errors:
         return 1
-    if ref_fields is None:
-        print("FAIL: 未在 references/table-schema.md 表 1 中解析到 JSON 块")
-        return 1
-    if skill_fields == ref_fields:
-        print(f"OK: 两处表 1 schema 一致（{len(skill_fields)} 个字段）")
-        return 0
-    sk = {f.get("name") for f in skill_fields}
-    rf = {f.get("name") for f in ref_fields}
-    print("FAIL: 两处表 1 schema 不一致")
-    print("  仅在 SKILL:", sorted(sk - rf))
-    print("  仅在 references:", sorted(rf - sk))
-    return 1
+    print("OK: 6 表 schema / 7 看板模板 / 13 评分行 全部可解析")
+    return 0
 
 
 if __name__ == "__main__":
