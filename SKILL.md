@@ -1,10 +1,10 @@
 ---
 name: qiuzhao
-version: 1.0.4
+version: 1.0.5
 description: "校招投递管理：录入JD、评估岗位契合度、跟踪投递进度、记录Offer、录入简历、面试复盘。数据存飞书多维表格。触发：/qiuzhao 或用户提及秋招/校招/投递/岗位评估/Offer/面试复盘。"
 ---
 
-# 秋招助理（qiuzhao） v1.0.4
+# 秋招助理（qiuzhao） v1.0.5
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 数据全部存储在用户自己的飞书多维表格中，本地只保留指针配置文件（`~/.config/qiuzhao/config.json`），不含业务数据。
@@ -56,11 +56,26 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 ### Step 1 — 确定 base（全自动优先）
 
-先尝试自动创建（base + 第一张表「投递记录」一次完成）：把 [references/table-schema.md](references/table-schema.md) 表 1 的 **JSON 数组原样**代入 `--fields`（不要自创字段属性，也不要留占位文字）：
+先尝试自动创建（base + 第一张表「投递记录」一次完成）。以下命令**可直接复制执行**（与 [references/table-schema.md](references/table-schema.md) 表 1 相同，如两处不一致以 references 为准）；非中国区用户把 `--time-zone` 换成用户本地时区：
 
 ```bash
-lark-cli base +base-create --name "秋招投递管理" --time-zone "<按用户本地时区询问或推断，如 Asia/Shanghai>" \
-  --table-name "投递记录" --fields '<references/table-schema.md 表1 的完整 JSON 数组>' --as user
+lark-cli base +base-create --name "秋招投递管理" --time-zone "Asia/Shanghai" \
+  --table-name "投递记录" --fields '[
+  {"name":"公司","type":"text"},
+  {"name":"岗位","type":"text"},
+  {"name":"投递日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
+  {"name":"最近更新","type":"datetime","style":{"format":"yyyy/MM/dd"}},
+  {"name":"进度查询链接","type":"text","style":{"type":"url"}},
+  {"name":"状态","type":"select","multiple":false,"options":[{"name":"待投递"},{"name":"已投递"},{"name":"筛选中"},{"name":"笔试"},{"name":"一面"},{"name":"二面"},{"name":"三面"},{"name":"HR面"},{"name":"Offer"},{"name":"已挂"},{"name":"放弃"}]},
+  {"name":"评分","type":"number","style":{"type":"plain","precision":1}},
+  {"name":"评分拆解","type":"text"},
+  {"name":"优先级","type":"select","multiple":false,"options":[{"name":"P0"},{"name":"P1"},{"name":"P2"}]},
+  {"name":"JD核心拆解","type":"text"},
+  {"name":"JD原文","type":"text"},
+  {"name":"备注","type":"text"},
+  {"name":"DDL日期","type":"datetime","style":{"format":"yyyy/MM/dd"}},
+  {"name":"DDL事项","type":"text"}
+]' --as user
 ```
 
 > `--table-name --fields` 会自动删除平台默认表并建自定义首表；返回里可核对 `default_table_deleted: true`。
