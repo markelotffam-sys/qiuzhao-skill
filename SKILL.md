@@ -16,13 +16,15 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 | 脚本 | 干什么 | 何时用 |
 |---|---|---|
-| `setup.py` | 一键初始化：建 base + 6 表 + 13 行规则 + 7 组件看板 + config（幂等，可 `--base-url` 接入已有表续跑） | 首次初始化 / 半途续跑 |
+| `bootstrap.py` | 一键初始化：建 base + 6 表 + 13 行规则 + 7 组件看板 + config（幂等，可 `--base-url` 接入已有表续跑） | 首次初始化 / 半途续跑 |
 | `init_check.py` | 自检：6 表 / 字段逐选项 / 13 行 / 7 组件 / link；只报告不改 | 初始化后、怀疑数据结构时 |
 | `overview.py` | 总览六段（状态计数 / P0 / DDL 两段 / 停滞 / 最近面试 / 看板） | `/qiuzhao` 总览 |
 | `migrate_backfill.py` | 旧数据迁移：回填「最近更新」、报告缺「DDL日期」；**默认预览**，`--apply` 才写 | 接入旧 base |
-| `export_backup.py` | 6 表导出本地 JSON（含 base_token，属私人备份） | 定期备份 / 换机前 |
+| `export_backup.py` | 6 表导出本地 JSON（700/600 权限；导出≠恢复，无自动恢复） | 定期备份 / 换机前 |
 | `conversion_report.py` | 各优先级进面率/Offer率复盘（只呈现事实，不自动调参） | 定期复盘 |
 | `check_schema_sync.py` | 校验 references 的 6 表/7 模板可解析 + 生成器正确 | CI 自动跑 |
+
+单元测试：`python3 -m unittest discover -s tests`（CI 同跑 compileall + 测试 + schema 校验）。
 
 脚本统一从 `references/` 解析 schema（单一来源）；跑脚本用 `python3 scripts/<name>.py`（在 skill 目录下）。
 
@@ -31,7 +33,7 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 | 指令 | 用途 |
 |------|------|
 | `/qiuzhao` | 总览（跑 `overview.py`；首次使用自动进入初始化） |
-| `/qiuzhao 初始化` | 收集偏好后跑 `setup.py`；换电脑/恢复数据用 `--base-url` 接入已有表 |
+| `/qiuzhao 初始化` | 收集偏好后跑 `bootstrap.py`；换电脑/恢复数据用 `--base-url` 接入已有表 |
 | `/qiuzhao {自然语言}` | 自动判断意图：录入JD / 更新进度 / 记录Offer / 录入简历 / 面试复盘 / 备份 / 复盘 |
 
 意图判断：
@@ -59,14 +61,15 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 ### Step 2 — 一键初始化
 
 ```bash
-python3 scripts/setup.py --direction "支付>金融科技>风控" --city "北京>杭州"
+python3 scripts/bootstrap.py --direction "支付>金融科技>风控" --city "北京>杭州"
 ```
 
 脚本自动完成：建 base + 6 表 → 13 行评分规则（方向/城市档位按 Step 1 偏好生成）→ 7 组件看板 → 写 config → 自动跑 `init_check.py` 自检。
 
 - 非中国区加 `--time-zone <本地时区>`
-- 接入已有表（换电脑/恢复/半途续跑）加 `--base-url "<表格链接>"`——幂等续跑，只补缺失
-- 自检有"缺选项"类警告时按提示用 `+field-update` 补（high-risk，先征得用户同意）
+- **幂等**：已有 config 且 base 可达时自动续跑（不会重复建 base）；新建 base 后立即写 config，中途失败重跑可找回
+- 接入已有表（换电脑/恢复）加 `--base-url "<表格链接>"`；旧表缺字段/选项时加 `--fix-fields` 自动补齐（选项更新属 high-risk，先征得用户同意）
+- 评分规则按 (模块,维度) 只补缺失行，不覆盖用户已改的权重
 
 ### Step 3 — 完成摘要
 
@@ -175,7 +178,7 @@ python3 scripts/setup.py --direction "支付>金融科技>风控" --city "北京
 
 ## 可视化看板
 
-「投递进度看板」7 组件由 `setup.py` 自动创建，data_config 模板见 [references/dashboard-blocks.md](references/dashboard-blocks.md)。已知坑（lark-cli 1.0.96 实测）：text 组件更新会被包 JSON 引号——DDL 提醒用数据驱动柱状图（按「DDL日期」），不用 text 组件。
+「投递进度看板」7 组件由 `bootstrap.py` 自动创建，data_config 模板见 [references/dashboard-blocks.md](references/dashboard-blocks.md)。已知坑（lark-cli 1.0.96 实测）：text 组件更新会被包 JSON 引号——DDL 提醒用数据驱动柱状图（按「DDL日期」），不用 text 组件。
 
 ## 迁移 / 备份 / 复盘
 

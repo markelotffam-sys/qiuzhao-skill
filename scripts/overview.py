@@ -43,6 +43,11 @@ def main() -> int:
         st = f(r, "状态") or "（未填）"
         counts[st] = counts.get(st, 0) + 1
     line = " · ".join(f"{st} {counts[st]}" for st in ORDER if st in counts)
+    other = sum(v for k, v in counts.items() if k not in ORDER and k != "（未填）")
+    if counts.get("（未填）"):
+        line += f" · 未填 {counts['（未填）']}"
+    if other:
+        line += f" · 其他 {other}"
     print(f"【各状态计数】{line or '暂无记录'}（共 {len(apps)}）")
 
     # 2. P0 待办（非终态，按评分降序）
@@ -63,12 +68,12 @@ def main() -> int:
             continue
         (expired if ddl <= now else upcoming if ddl <= win_end else []).append((ddl, r))
     print(f"\n【DDL · 未来 7 天（含今天）】")
-    for ddl, r in sorted(upcoming):
+    for ddl, r in sorted(upcoming, key=lambda x: x[0]):
         print(f"- {ddl:%m-%d %H:%M} {f(r,'DDL事项') or ''}（{f(r,'公司')}）")
     if not upcoming:
         print("（无）")
     print(f"【DDL · 已过期】")
-    for ddl, r in sorted(expired):
+    for ddl, r in sorted(expired, key=lambda x: x[0]):
         print(f"- {ddl:%m-%d %H:%M} {f(r,'DDL事项') or ''}（{f(r,'公司')}）— 建议清理")
     if not expired:
         print("（无）")

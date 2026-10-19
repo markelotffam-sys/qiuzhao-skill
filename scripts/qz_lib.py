@@ -43,6 +43,23 @@ def lark(*args: str, check: bool = True) -> dict:
     return data
 
 
+def try_load_config() -> dict:
+    """读 config，不存在返回 None（不退出）。"""
+    if CONFIG_PATH.exists():
+        return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    if LEGACY_CONFIG_PATH.exists():
+        cfg = json.loads(LEGACY_CONFIG_PATH.read_text(encoding="utf-8"))
+        save_config(cfg)
+        LEGACY_CONFIG_PATH.unlink()
+        return cfg
+    return None
+
+
+def base_reachable(base_token: str) -> bool:
+    d = lark("base", "+table-list", "--base-token", base_token, check=False)
+    return bool(d.get("ok"))
+
+
 def load_config() -> dict:
     """读 config；新路径缺失时尝试旧路径一次性迁移。"""
     if CONFIG_PATH.exists():
@@ -52,7 +69,7 @@ def load_config() -> dict:
         save_config(cfg)
         LEGACY_CONFIG_PATH.unlink()
         return cfg
-    sys.exit(f"配置不存在：{CONFIG_PATH}\n请先运行 setup.py 初始化（或提供已有表格链接）")
+    sys.exit(f"配置不存在：{CONFIG_PATH}\n请先运行 bootstrap.py 初始化（或提供已有表格链接）")
 
 
 def save_config(cfg: dict) -> None:

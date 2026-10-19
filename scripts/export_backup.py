@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""导出备份：把 6 张表导出为本地 JSON（默认 ~/qiuzhao-backup/<日期>/）。
+"""导出（不含自动恢复）：把 6 张表导出为本地 JSON（默认 ~/qiuzhao-backup/<日期>/，权限 700/600）。
 
 用法：python3 scripts/export_backup.py [--out DIR]
 """
@@ -23,6 +23,10 @@ def main() -> int:
     cfg = qz.load_config()
     out = Path(args.out) if args.out else Path.home() / "qiuzhao-backup" / datetime.date.today().isoformat()
     out.mkdir(parents=True, exist_ok=True)
+    try:
+        out.chmod(0o700)  # 含简历/投递数据与 base_token，收紧目录权限
+    except OSError:
+        pass
 
     meta = {"base_token": cfg["base_token"], "tables": cfg["tables"],
             "preferences": cfg.get("preferences"), "exported_at": datetime.datetime.now().isoformat()}
@@ -33,9 +37,14 @@ def main() -> int:
     for name in TABLES:
         rows = qz.records(name, cfg)
         total += len(rows)
-        (out / f"{name}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+        fp = out / f"{name}.json"
+        fp.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            fp.chmod(0o600)
+        except OSError:
+            pass
         print(f"✓ {name}: {len(rows)} 条")
-    print(f"\n导出完成：{out}（共 {total} 条）。含 base_token，属私人备份，请勿分享该目录。")
+    print(f"\n导出完成：{out}（共 {total} 条，目录 700/文件 600）。含 base_token 与个人数据，勿分享该目录；此为导出（不含自动恢复），恢复需导入或人工回填。")
     return 0
 
 

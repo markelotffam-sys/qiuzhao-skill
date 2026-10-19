@@ -10,6 +10,7 @@
 ### 1. 准备 Claude Code 与 lark-cli
 
 - 装好 [Claude Code](https://claude.com/claude-code)
+- 装 Python 3.9+（脚本用）：`python3 --version` 验证
 - 装飞书命令行工具 lark-cli（公开 npm 包 [@larksuite/cli](https://www.npmjs.com/package/@larksuite/cli)，需 Node.js ≥ 16，建议 18+）：
 
 ```bash
@@ -75,7 +76,7 @@ git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills
 ## 常见问题
 
 **初始化时自动创建失败怎么办？**
-在飞书手动创建一个多维表格，把链接发给 AI，skill 会解析链接继续（自带的默认表会自动复用改名或经你确认后删除）。
+在飞书手动创建一个多维表格，把链接发给 AI，skill 会解析链接继续（注意：接入已有表时平台默认表会保留，可手动删除或改作他用；脚本不会动它）。
 
 **想改评分权重/偏好？**
 直接改飞书「评分规则」表对应行（「权重」列或「档位规则」列），不用动 skill。
