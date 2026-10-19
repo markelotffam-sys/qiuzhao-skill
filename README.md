@@ -24,7 +24,7 @@ lark-cli auth status            # 确认通过
 ### 2. 把本仓库装进技能目录
 
 ```bash
-git clone https://github.com/<仓库所有者>/qiuzhao-skill.git ~/.claude/skills/qiuzhao
+git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills/qiuzhao
 ```
 
 > 没装 git 也可以：仓库页面 Code → Download ZIP，解压后把里面的文件夹改名为 `qiuzhao`，整个移到 `~/.claude/skills/` 下。
