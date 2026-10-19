@@ -137,6 +137,28 @@ class TestConversion(unittest.TestCase):
         self.assertEqual(line.split()[1], "1")  # 分母只有 1
 
 
+class TestParseOrderSeparators(unittest.TestCase):
+    def test_all_separators(self):
+        """逗号/竖线/尖括号/全角均可解析（Windows cmd 推荐逗号）。"""
+        self.assertEqual(bootstrap.parse_order("支付,金融科技,风控"), ["支付", "金融科技", "风控"])
+        self.assertEqual(bootstrap.parse_order("支付|金融科技"), ["支付", "金融科技"])
+        self.assertEqual(bootstrap.parse_order("支付>金融科技"), ["支付", "金融科技"])
+        self.assertEqual(bootstrap.parse_order("支付＞金融科技，风控"), ["支付", "金融科技", "风控"])
+        self.assertEqual(bootstrap.parse_order("支付 , 金融科技 "), ["支付", "金融科技"])
+
+
+class TestFindLarkCli(unittest.TestCase):
+    def test_windows_cmd_fallback(self):
+        """Windows：which 找不到时回退 %APPDATA%\\npm\\lark-cli.cmd。"""
+        import os
+        fake_appdata = "/fake/appdata"
+        target = Path(fake_appdata) / "npm" / "lark-cli.cmd"
+        with mock.patch.object(qz.shutil, "which", return_value=None), \
+             mock.patch.dict(os.environ, {"APPDATA": fake_appdata}), \
+             mock.patch.object(Path, "exists", lambda self: str(self) == str(target)):
+            self.assertEqual(qz.find_lark_cli(), str(target))
+
+
 class TestOverviewHelpers(unittest.TestCase):
     def test_parse_dt_formats(self):
         self.assertIsNotNone(overview.parse_dt("2026-03-24 10:00"))

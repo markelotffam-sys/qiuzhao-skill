@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.2 — 2026-10-19
+
+Windows 适配（macOS/Linux 之外把 Windows 提为一等公民）：
+
+- subprocess 显式 UTF-8 读取（修中文乱码/UnicodeDecodeError）；输出流统一 UTF-8（修 ✓⚠✗ 在 GBK 控制台崩溃）
+- `find_lark_cli` 回退 `%APPDATA%\npm\lark-cli.cmd`，`.cmd` 经 `cmd /c` 执行
+- 偏好分隔符支持 `,` `|` `>`（推荐逗号，避开 cmd 重定向）；文档示例改逗号
+- README 新增 Windows 段落（`py -3`、`%USERPROFILE%`、PowerShell 用法）；heredoc 示例补 PowerShell 变体
+- CI 新增 windows-latest job（compileall + 测试 + schema 校验）；新增 2 组 Windows 用例（共 13 项）
+
 ## 1.1.1 — 2026-10-19
 
 可靠性修复（初始化从"能跑"到"稳"）：

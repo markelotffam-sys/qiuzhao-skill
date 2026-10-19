@@ -5,8 +5,22 @@ on:
   pull_request:
 
 jobs:
-  check:
+  check-unix:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile all scripts
+        run: python -m compileall scripts tests
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Schema parseability (references single source)
+        run: python scripts/check_schema_sync.py
+
+  check-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

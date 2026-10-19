@@ -5,11 +5,19 @@
 看板 data_config 从 references/dashboard-blocks.md 解析。
 """
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+# Windows 控制台默认 GBK，✓⚠✗ 与中文会 UnicodeEncodeError——统一按 UTF-8 输出
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = Path.home() / ".config" / "qiuzhao" / "config.json"
@@ -17,21 +25,30 @@ LEGACY_CONFIG_PATH = Path.home() / ".claude" / "skills" / "qiuzhao" / "config.js
 
 
 def find_lark_cli() -> str:
-    exe = shutil.which("lark-cli")
+    exe = shutil.which("lark-cli") or shutil.which("lark-cli.cmd")
     if exe:
         return exe
-    cand = Path.home() / ".npm-global" / "bin" / "lark-cli"
-    if cand.exists():
-        return str(cand)
+    candidates = [
+        Path.home() / ".npm-global" / "bin" / "lark-cli",           # Unix 手装 npm 前缀
+        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli.cmd",  # Windows npm 全局
+        Path(os.environ.get("APPDATA", "")) / "npm" / "lark-cli",
+    ]
+    for cand in candidates:
+        if cand and cand.exists():
+            return str(cand)
     sys.exit("lark-cli 未找到；请先安装：npm install -g @larksuite/cli@1.0.96")
 
 
 def lark(*args: str, check: bool = True) -> dict:
     """执行 lark-cli 子命令并解析 JSON 输出。"""
-    cmd = [find_lark_cli(), *args, "--as", "user"]
+    exe = find_lark_cli()
+    cmd = [exe, *args, "--as", "user"]
     if "--format" not in args:
         cmd += ["--format", "json"]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if exe.lower().endswith((".cmd", ".bat")):  # Windows 批处理需经 cmd /c
+        cmd = ["cmd", "/c", *cmd]
+    # 显式 UTF-8：lark-cli 输出 UTF-8，Windows 默认 locale（cp936）会乱码/报错
+    proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError:

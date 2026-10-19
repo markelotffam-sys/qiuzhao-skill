@@ -14,6 +14,7 @@
 import argparse
 import datetime
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -24,7 +25,9 @@ WANT_TABLES = ["投递记录", "简历库", "个人信息", "评分规则", "Off
 
 
 def parse_order(s: str) -> list:
-    return [x.strip() for x in s.replace("＞", ">").split(">") if x.strip()]
+    """支持 '支付>金融科技' / '支付,金融科技' / '支付|金融科技'（推荐逗号，避开 shell 重定向）。"""
+    parts = re.split(r"[>＞,，|｜/]+", s)
+    return [x.strip() for x in parts if x.strip()]
 
 
 def resolve_base(args) -> tuple:
@@ -161,8 +164,8 @@ def ensure_dashboard(base_token: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--direction", required=True, help='方向偏好排序，如 "支付>金融科技>风控"')
-    ap.add_argument("--city", required=True, help='城市偏好排序，如 "北京>杭州"')
+    ap.add_argument("--direction", required=True, help='方向偏好排序（推荐逗号分隔），如 "支付,金融科技,风控"')
+    ap.add_argument("--city", required=True, help='城市偏好排序（推荐逗号分隔），如 "北京,杭州"')
     ap.add_argument("--name", default="秋招投递管理")
     ap.add_argument("--time-zone", default="Asia/Shanghai", help="非中国区用户改本地时区")
     ap.add_argument("--base-url", help="接入已有表格时传其链接（跳过创建 base）")

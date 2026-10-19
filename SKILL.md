@@ -26,7 +26,7 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 
 单元测试：`python3 -m unittest discover -s tests`（CI 同跑 compileall + 测试 + schema 校验）。
 
-脚本统一从 `references/` 解析 schema（单一来源）；跑脚本用 `python3 scripts/<name>.py`（在 skill 目录下）。
+脚本统一从 `references/` 解析 schema（单一来源）；跑脚本用 `python3 scripts/<name>.py`（Windows：`py -3 scripts\<name>.py`）。
 
 ## 触发方式
 
@@ -61,8 +61,11 @@ description: "校招投递管理：录入JD、评估岗位契合度、跟踪投�
 ### Step 2 — 一键初始化
 
 ```bash
-python3 scripts/bootstrap.py --direction "支付>金融科技>风控" --city "北京>杭州"
+python3 scripts/bootstrap.py --direction "支付,金融科技,风控" --city "北京,杭州"
+# Windows：py -3 scripts\bootstrap.py --direction "支付,金融科技,风控" --city "北京,杭州"
 ```
+
+> 偏好分隔符支持 `,` `|` `>`（含全角），**推荐逗号**——`>` 在 Windows cmd 里是重定向字符。
 
 脚本自动完成：建 base + 6 表 → 13 行评分规则（方向/城市档位按 Step 1 偏好生成）→ 7 组件看板 → 写 config → 自动跑 `init_check.py` 自检。
 

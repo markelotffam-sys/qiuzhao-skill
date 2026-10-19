@@ -153,8 +153,14 @@ lark-cli base +record-upsert --base-token <token> --table-id 投递记录 --reco
 **含换行/引号的长 JSON**（如 JD核心拆解多行文本）：先写入临时文件再传，避免 shell 转义出错：
 
 ```bash
+# macOS / Linux
 cat > /tmp/record.json <<'EOF'
 {"公司":"示例公司","JD核心拆解":"【岗位方向】支付\n【核心职责】……"}
 EOF
 lark-cli base +record-upsert ... --json "$(cat /tmp/record.json)"
+```
+
+```powershell
+# Windows（PowerShell）：用编辑器或 Python 写文件，再读文件传参；勿用 bash heredoc
+Get-Content record.json -Raw | lark-cli base +record-upsert ... --json
 ```

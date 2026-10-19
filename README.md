@@ -1,6 +1,6 @@
 # 秋招助理（qiuzhao） Skill
 
-> v1.1.0 · 实测于 lark-cli 1.0.96（建议同版本）
+> v1.1.2 · 实测于 lark-cli 1.0.96（建议同版本）
 
 一个通用的校招投递管理助手：录入 JD、评估岗位契合度、跟踪投递进度、评估 Offer、面试复盘。
 首次使用自动初始化（创建飞书表格结构、引导设置偏好），数据全部存在你自己的飞书账号下，本地只存指针。
@@ -24,9 +24,19 @@ lark-cli auth status            # 确认通过
 
 ### 2. 把本仓库装进技能目录
 
+macOS / Linux：
+
 ```bash
 git clone https://github.com/markelotffam-sys/qiuzhao-skill.git ~/.claude/skills/qiuzhao
 ```
+
+Windows（PowerShell 或 cmd）：
+
+```
+git clone https://github.com/markelotffam-sys/qiuzhao-skill.git %USERPROFILE%\.claude\skills\qiuzhao
+```
+
+> Windows 注意：脚本命令用 `py -3 scripts\<name>.py`（或 `python`）代替 `python3`；偏好分隔符推荐**逗号**（`--direction "支付,金融科技"`），避免 `>` 在 cmd 里被当重定向；长 JSON 示例用编辑器存文件再传，勿依赖 bash heredoc。
 
 > 没装 git 也可以：仓库页面 Code → Download ZIP，解压后把里面的文件夹改名为 `qiuzhao`，整个移到 `~/.claude/skills/` 下。
 
