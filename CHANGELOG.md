@@ -1,10 +1,16 @@
 # Changelog
 
+## 1.0.7 — 2026-10-19
+
+- 「未来 7 天」明确为**含今天共 7 天**（今天起至今天+6 的 23:59）
+- 加 schema 一致性 CI（`scripts/check_schema_sync.py`）：自动比对 SKILL Step 1 与 references 表 1 的字段 JSON
+- CHANGELOG 1.0.6 措辞修正（"可执行命令唯一来源"）
+
 ## 1.0.6 — 2026-10-19
 
 - 「未来 7 天」明确为自然日口径（到今天+7 的 23:59）
 - 旧数据迁移补翻页说明（`--offset` / ndjson）
-- 字段 schema 唯一来源化：references 表 1 只留 JSON，完整命令统一在 SKILL Step 1
+- 可执行命令唯一来源（完整命令只在 SKILL Step 1）；字段 JSON 两处保留但加 CI 自动比对防漂移
 - README FAQ 合并、.gitignore 精简
 
 ## 1.0.5 — 2026-10-19
